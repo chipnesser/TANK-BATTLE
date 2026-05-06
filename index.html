@@ -457,7 +457,7 @@
       position: fixed;
       left: max(18px, env(safe-area-inset-left));
       top: calc(max(18px, env(safe-area-inset-top)) + 48px);
-      min-width: 88px;
+      min-width: 116px;
       height: 34px;
       padding: 0 10px;
       border: 2px solid rgba(176, 112, 43, 0.28);
@@ -472,6 +472,28 @@
     }
 
     #gyroToggle.show {
+      display: block;
+    }
+
+    #gyroCalibrate {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      top: calc(max(18px, env(safe-area-inset-top)) + 88px);
+      min-width: 88px;
+      height: 30px;
+      padding: 0 10px;
+      border: 2px solid rgba(176, 112, 43, 0.24);
+      border-radius: 999px;
+      background: rgba(255, 245, 210, 0.88);
+      color: #5a3818;
+      box-shadow: 0 8px 18px rgba(104, 66, 16, 0.14);
+      font: 700 11px "Trebuchet MS", Verdana, sans-serif;
+      z-index: 6;
+      display: none;
+      touch-action: manipulation;
+    }
+
+    #gyroCalibrate.show {
       display: block;
     }
 
@@ -644,10 +666,19 @@
       #gyroToggle {
         left: max(10px, env(safe-area-inset-left));
         top: calc(max(10px, env(safe-area-inset-top)) + 40px);
-        min-width: 74px;
+        min-width: 102px;
         height: 28px;
         padding: 0 8px;
         font-size: 10px;
+      }
+
+      #gyroCalibrate {
+        left: max(10px, env(safe-area-inset-left));
+        top: calc(max(10px, env(safe-area-inset-top)) + 72px);
+        min-width: 76px;
+        height: 25px;
+        padding: 0 8px;
+        font-size: 9px;
       }
     }
 
@@ -704,6 +735,10 @@
       #gyroToggle {
         top: calc(max(10px, env(safe-area-inset-top)) + 36px);
       }
+
+      #gyroCalibrate {
+        top: calc(max(10px, env(safe-area-inset-top)) + 64px);
+      }
     }
 
     @media (pointer: coarse) and (orientation: landscape) {
@@ -752,7 +787,8 @@
 
   <button id="helpButton" class="ui-button" aria-label="Show controls">?</button>
   <button id="pauseButton" class="ui-button" aria-label="Pause game">P</button>
-  <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Gyro: Off</button>
+  <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Gyro Steering: Off</button>
+  <button id="gyroCalibrate" aria-label="Calibrate gyroscopic steering">Calibrate</button>
 
   <div id="helpPanel" aria-hidden="true">
     <button id="closeHelp" aria-label="Close controls">x</button>
@@ -853,6 +889,7 @@ The enemy is in full retreat.</p>
     const helpButton = document.getElementById("helpButton");
     const pauseButton = document.getElementById("pauseButton");
     const gyroToggle = document.getElementById("gyroToggle");
+    const gyroCalibrate = document.getElementById("gyroCalibrate");
     const helpPanel = document.getElementById("helpPanel");
     const closeHelp = document.getElementById("closeHelp");
     const pauseOverlay = document.getElementById("pauseOverlay");
@@ -901,6 +938,8 @@ The enemy is in full retreat.</p>
     const BONUS_ROUND_MS = 75000;
     const GYRO_DEAD_ZONE = 3.5;
     const GYRO_MAX_TILT = 18;
+    const GYRO_MOVE_DEAD_ZONE = 4.5;
+    const GYRO_MAX_PITCH = 22;
     const weatherModes = ["clear", "dust", "sunset"];
     const warQuotes = [
       "Courage is almost a contradiction in terms. - G. K. Chesterton",
@@ -1089,7 +1128,11 @@ The enemy is in full retreat.</p>
         supported: false,
         enabled: false,
         gamma: 0,
+        beta: 0,
+        neutralGamma: 0,
+        neutralBeta: 0,
         steer: 0,
+        throttle: 0,
       },
       ending: {
         quote: "",
@@ -1215,13 +1258,30 @@ The enemy is in full retreat.</p>
     function updateGyroToggle() {
       world.gyro.supported = supportsGyroSteering();
       gyroToggle.classList.toggle("show", world.gyro.supported);
-      gyroToggle.textContent = `Gyro: ${world.gyro.enabled ? "On" : "Off"}`;
+      gyroCalibrate.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
+      gyroToggle.textContent = `Gyro Steering: ${world.gyro.enabled ? "On" : "Off"}`;
       gyroToggle.disabled = !world.gyro.supported;
+      gyroCalibrate.disabled = !world.gyro.supported || !world.gyro.enabled;
     }
 
     function onDeviceOrientation(event) {
       if (typeof event.gamma !== "number") return;
       world.gyro.gamma = clamp(event.gamma, -35, 35);
+      if (typeof event.beta === "number") {
+        world.gyro.beta = clamp(event.beta, -35, 50);
+      }
+    }
+
+    function calibrateGyroSteering() {
+      world.gyro.neutralGamma = world.gyro.gamma;
+      world.gyro.neutralBeta = world.gyro.beta;
+    }
+
+    function getGyroAxisValue(value, neutral, deadZone, maxValue) {
+      const offset = value - neutral;
+      const absOffset = Math.abs(offset);
+      if (absOffset <= deadZone) return 0;
+      return clamp((absOffset - deadZone) / (maxValue - deadZone), 0, 1) * Math.sign(offset);
     }
 
     async function toggleGyroSteering() {
@@ -1238,13 +1298,38 @@ The enemy is in full retreat.</p>
       }
       world.gyro.enabled = !world.gyro.enabled;
       if (world.gyro.enabled) {
+        calibrateGyroSteering();
         window.addEventListener("deviceorientation", onDeviceOrientation);
       } else {
         world.gyro.gamma = 0;
+        world.gyro.beta = 0;
         world.gyro.steer = 0;
+        world.gyro.throttle = 0;
         window.removeEventListener("deviceorientation", onDeviceOrientation);
       }
       updateGyroToggle();
+    }
+
+    // Mobile camera adjustment pulls the view back slightly so enemies are easier to see around the cannon.
+    function getCameraConfig() {
+      if (isTouchDevice) {
+        return {
+          halfFov: 0.76,
+          horizon: canvas.height * 0.5,
+          scaleBase: 760,
+          barrelYOffset: 62,
+          barrelLift: 24,
+          crosshairY: canvas.height * 0.54,
+        };
+      }
+      return {
+        halfFov: 0.66,
+        horizon: canvas.height * 0.54,
+        scaleBase: 900,
+        barrelYOffset: 0,
+        barrelLift: 0,
+        crosshairY: canvas.height * 0.58,
+      };
     }
 
     function isCompactMobileHud() {
@@ -1815,7 +1900,11 @@ The enemy is in full retreat.</p>
       world.bonusRound.active = false;
       world.bonusRound.endsAt = 0;
       world.gyro.gamma = 0;
+      world.gyro.beta = 0;
+      world.gyro.neutralGamma = 0;
+      world.gyro.neutralBeta = 0;
       world.gyro.steer = 0;
+      world.gyro.throttle = 0;
       world.finalName = "";
       world.ending.quote = "";
       world.ending.stage = "victory";
@@ -2085,7 +2174,7 @@ The enemy is in full retreat.</p>
       let turnInput = 0;
       if (isTouchDevice) {
         moveInput = clamp(-touchState.moveY, -1, 1);
-        turnInput = world.gyro.enabled ? world.gyro.steer : clamp(touchState.moveX, -1, 1);
+        turnInput = clamp(touchState.moveX, -1, 1);
       } else {
         if (keys.KeyW || keys.ArrowUp) moveInput += 1;
         if (keys.KeyS || keys.ArrowDown) moveInput -= 1;
@@ -2094,13 +2183,15 @@ The enemy is in full retreat.</p>
       }
 
       if (world.gyro.enabled) {
-        const absGamma = Math.abs(world.gyro.gamma);
-        const normalized = absGamma <= GYRO_DEAD_ZONE
-          ? 0
-          : clamp((absGamma - GYRO_DEAD_ZONE) / (GYRO_MAX_TILT - GYRO_DEAD_ZONE), 0, 1) * Math.sign(world.gyro.gamma);
-        world.gyro.steer += (normalized - world.gyro.steer) * Math.min(1, dt * 4.5);
+        const steerTarget = getGyroAxisValue(world.gyro.gamma, world.gyro.neutralGamma, GYRO_DEAD_ZONE, GYRO_MAX_TILT);
+        const throttleTarget = getGyroAxisValue(world.gyro.neutralBeta - world.gyro.beta, 0, GYRO_MOVE_DEAD_ZONE, GYRO_MAX_PITCH);
+        world.gyro.steer += (steerTarget - world.gyro.steer) * Math.min(1, dt * 4.5);
+        world.gyro.throttle += (throttleTarget - world.gyro.throttle) * Math.min(1, dt * 3.8);
+        turnInput = clamp(world.gyro.steer + turnInput * 0.2, -1, 1);
+        moveInput = clamp(world.gyro.throttle + moveInput * 0.2, -1, 1);
       } else {
         world.gyro.steer += (0 - world.gyro.steer) * Math.min(1, dt * 5);
+        world.gyro.throttle += (0 - world.gyro.throttle) * Math.min(1, dt * 5);
       }
 
       const turnSpeed = 1.22;
@@ -2288,18 +2379,17 @@ The enemy is in full retreat.</p>
     }
 
     function projectToScreen(x, y) {
+      const camera = getCameraConfig();
       const dx = x - world.player.x;
       const dy = y - world.player.y;
       const distance = Math.hypot(dx, dy);
       const angle = angleWrap(Math.atan2(dy, dx) - getViewAngle());
-      const halfFov = 0.66;
-      if (Math.abs(angle) > halfFov || distance < 1) return null;
-      const nx = angle / halfFov;
-      const horizon = canvas.height * 0.54;
-      const scale = 900 / distance;
+      if (Math.abs(angle) > camera.halfFov || distance < 1) return null;
+      const nx = angle / camera.halfFov;
+      const scale = camera.scaleBase / distance;
       return {
         x: canvas.width * 0.5 + nx * canvas.width * 0.48,
-        y: horizon + 120 / distance,
+        y: camera.horizon + 120 / distance,
         scale,
         distance
       };
@@ -2376,7 +2466,8 @@ The enemy is in full retreat.</p>
     }
 
     function drawGround() {
-      const horizon = canvas.height * 0.54;
+      const camera = getCameraConfig();
+      const horizon = camera.horizon;
       const groundGradient = ctx.createLinearGradient(0, horizon, 0, canvas.height);
       if (world.bonusRound.active) {
         groundGradient.addColorStop(0, "#6a3ad3");
@@ -2543,8 +2634,9 @@ The enemy is in full retreat.</p>
           const p0 = projectToScreen(ax, ay);
           const p1 = projectToScreen(bx, by);
           if (!p1) continue;
+          const camera = getCameraConfig();
           const originX = canvas.width * 0.5 + (world.player.turretAngle / TURRET_LIMIT) * 72;
-          const originY = canvas.height - 220 + world.player.recoil * 18;
+          const originY = canvas.height - 220 + world.player.recoil * 18 + camera.barrelYOffset;
           const rainbow = [
             "rgba(255,90,122,0.95)",
             "rgba(255,190,92,0.95)",
@@ -2628,35 +2720,37 @@ The enemy is in full retreat.</p>
     }
 
     function drawBarrel(now) {
+      const camera = getCameraConfig();
       const bobOffset = Math.sin(world.player.bob) * 5;
       const recoilOffset = world.player.recoil * 42;
-      const baseY = canvas.height + 16 + recoilOffset + bobOffset;
+      const baseY = canvas.height + 16 + recoilOffset + bobOffset + camera.barrelYOffset;
       const centerX = canvas.width * 0.5;
       const turretShift = (world.player.turretAngle / TURRET_LIMIT) * 72;
       ctx.fillStyle = "#58665f";
-      ctx.fillRect(centerX - 24, canvas.height - 126 + recoilOffset + bobOffset, 48, 136);
+      ctx.fillRect(centerX - 24, canvas.height - 126 + recoilOffset + bobOffset + camera.barrelLift, 48, 136);
       ctx.fillStyle = "#7e9189";
-      ctx.fillRect(centerX - 10 + turretShift * 0.22, canvas.height - 338 + recoilOffset + bobOffset, 20, 244);
+      ctx.fillRect(centerX - 10 + turretShift * 0.22, canvas.height - 338 + recoilOffset + bobOffset + camera.barrelYOffset, 20, 244);
       ctx.fillStyle = "#44514d";
       ctx.beginPath();
       ctx.moveTo(centerX - 132, baseY);
-      ctx.lineTo(centerX - 60, canvas.height - 122 + recoilOffset + bobOffset);
-      ctx.lineTo(centerX - 12, canvas.height - 122 + recoilOffset + bobOffset);
+      ctx.lineTo(centerX - 60, canvas.height - 122 + recoilOffset + bobOffset + camera.barrelLift);
+      ctx.lineTo(centerX - 12, canvas.height - 122 + recoilOffset + bobOffset + camera.barrelLift);
       ctx.lineTo(centerX - 12, baseY);
       ctx.fill();
       ctx.beginPath();
       ctx.moveTo(centerX + 132, baseY);
-      ctx.lineTo(centerX + 60, canvas.height - 122 + recoilOffset + bobOffset);
-      ctx.lineTo(centerX + 12, canvas.height - 122 + recoilOffset + bobOffset);
+      ctx.lineTo(centerX + 60, canvas.height - 122 + recoilOffset + bobOffset + camera.barrelLift);
+      ctx.lineTo(centerX + 12, canvas.height - 122 + recoilOffset + bobOffset + camera.barrelLift);
       ctx.lineTo(centerX + 12, baseY);
       ctx.fill();
       ctx.fillStyle = "#96aaa1";
-      ctx.fillRect(centerX - 8 + turretShift, canvas.height - 350 + recoilOffset + bobOffset, 16, 66);
+      ctx.fillRect(centerX - 8 + turretShift, canvas.height - 350 + recoilOffset + bobOffset + camera.barrelYOffset, 16, 66);
     }
 
     function drawCrosshair(now) {
+      const camera = getCameraConfig();
       const x = canvas.width * 0.5 + (world.player.turretAngle / TURRET_LIMIT) * 96;
-      const y = canvas.height * 0.58;
+      const y = camera.crosshairY;
       const target = getAimTarget();
       const linedUp = !!target;
       ctx.strokeStyle = linedUp ? "rgba(111,255,152,1)" : "rgba(255,247,219,1)";
@@ -2890,14 +2984,14 @@ The enemy is in full retreat.</p>
     let lastTapAt = 0;
     document.addEventListener("touchend", (event) => {
       if (event.target.closest("input, textarea")) return;
-      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #pauseOverlay, #helpPanel, #endingOverlay")) return;
+      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #gyroCalibrate, #pauseOverlay, #helpPanel, #endingOverlay")) return;
       const now = performance.now();
       if (now - lastTapAt < 320) {
         event.preventDefault();
       }
       lastTapAt = now;
     }, { passive: false });
-    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
+    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, gyroCalibrate, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
       target.addEventListener("dblclick", (event) => {
         event.preventDefault();
       });
@@ -2943,6 +3037,11 @@ The enemy is in full retreat.</p>
     pauseButton.addEventListener("click", () => togglePause());
     gyroToggle.addEventListener("click", () => {
       toggleGyroSteering();
+    });
+    gyroCalibrate.addEventListener("click", () => {
+      startSoundtrack();
+      playUiClickSound();
+      calibrateGyroSteering();
     });
     resumeButton.addEventListener("click", () => togglePause(false));
     touchPause.addEventListener("click", () => togglePause());
