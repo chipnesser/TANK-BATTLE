@@ -2,10 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Desert Tank Patrol</title>
   <style>
     :root {
+      --app-height: 100vh;
       --sky-top: #89d6f7;
       --sky-bottom: #f5d79a;
       --sand: #d8b16a;
@@ -25,20 +26,31 @@
       -webkit-tap-highlight-color: transparent;
     }
 
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       margin: 0;
-      overflow: hidden;
+      width: 100%;
+      height: var(--app-height);
       background: #21180f;
       color: var(--text);
       font-family: "Trebuchet MS", Verdana, sans-serif;
       touch-action: none;
       user-select: none;
+      overscroll-behavior: none;
+      position: fixed;
+      inset: 0;
     }
 
     #game {
       display: block;
       width: 100vw;
-      height: 100vh;
+      height: var(--app-height);
     }
 
     .hud {
@@ -58,29 +70,29 @@
     }
 
     #status {
-      top: 18px;
-      left: 18px;
+      top: max(18px, env(safe-area-inset-top));
+      left: max(18px, env(safe-area-inset-left));
       min-width: 220px;
     }
 
     #message {
-      top: 18px;
-      right: 18px;
+      top: max(18px, env(safe-area-inset-top));
+      right: max(18px, env(safe-area-inset-right));
       min-width: 250px;
       text-align: right;
     }
 
     #actionStatus {
       left: 50%;
-      bottom: 24px;
+      bottom: max(24px, env(safe-area-inset-bottom));
       transform: translateX(-50%);
       min-width: 300px;
       text-align: center;
     }
 
     #radarWrap {
-      left: 18px;
-      bottom: 18px;
+      left: max(18px, env(safe-area-inset-left));
+      bottom: max(18px, env(safe-area-inset-bottom));
       padding: 12px;
     }
 
@@ -140,13 +152,13 @@
     }
 
     #helpButton {
-      right: 18px;
-      top: 18px;
+      right: max(18px, env(safe-area-inset-right));
+      top: max(18px, env(safe-area-inset-top));
     }
 
     #pauseButton {
-      right: 68px;
-      top: 18px;
+      right: calc(max(18px, env(safe-area-inset-right)) + 50px);
+      top: max(18px, env(safe-area-inset-top));
     }
 
     #helpPanel,
@@ -164,8 +176,8 @@
     }
 
     #helpPanel {
-      right: 18px;
-      top: 66px;
+      right: max(18px, env(safe-area-inset-right));
+      top: calc(max(18px, env(safe-area-inset-top)) + 48px);
       width: 280px;
       padding: 12px 14px 14px;
       border: 2px solid var(--hud-border);
@@ -263,6 +275,28 @@
       display: none;
     }
 
+    #rotateNotice {
+      position: fixed;
+      left: 50%;
+      top: calc(max(12px, env(safe-area-inset-top)) + 54px);
+      transform: translateX(-50%);
+      z-index: 7;
+      display: none;
+      padding: 10px 14px;
+      border: 2px solid rgba(176, 112, 43, 0.28);
+      border-radius: 16px;
+      background: rgba(255, 245, 210, 0.94);
+      color: #5a3818;
+      box-shadow: 0 10px 22px rgba(104, 66, 16, 0.22);
+      font: 700 14px "Trebuchet MS", Verdana, sans-serif;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #rotateNotice.show {
+      display: block;
+    }
+
     #joystickZone,
     #actionZone {
       position: absolute;
@@ -348,26 +382,169 @@
         width: min(88vw, 300px);
       }
 
-      #status,
-      #message,
-      #actionStatus,
-      #radarWrap {
-        transform: scale(0.92);
-        transform-origin: top left;
+      .panel {
+        padding: 10px 12px;
+        border-radius: 16px;
+      }
+
+      .label {
+        font-size: 10px;
+        margin-bottom: 3px;
+      }
+
+      .value {
+        font-size: 18px;
+      }
+
+      .small {
+        font-size: 15px;
+      }
+
+      #status {
+        min-width: 148px;
+        max-width: 40vw;
       }
 
       #message {
-        transform-origin: top right;
+        min-width: 158px;
+        max-width: 44vw;
       }
 
       #actionStatus {
-        transform: translateX(-50%) scale(0.92);
+        min-width: 180px;
+        max-width: 46vw;
+        bottom: calc(max(18px, env(safe-area-inset-bottom)) + 116px);
+        padding: 8px 10px;
+      }
+
+      #radarWrap {
+        padding: 8px;
+      }
+
+      #radar {
+        width: 108px;
+        height: 108px;
+      }
+
+      #joystickZone {
+        width: 160px;
+        height: 160px;
+      }
+
+      #joystickBase {
+        width: 124px;
+        height: 124px;
+      }
+
+      #joystickStick {
+        left: 38px;
+        bottom: 38px;
+        width: 48px;
+        height: 48px;
+      }
+
+      #actionZone {
+        width: 190px;
+        height: 184px;
+      }
+
+      #touchFire {
+        width: 90px;
+        height: 90px;
+      }
+
+      #touchReload {
+        right: 94px;
+        bottom: 30px;
+        width: 70px;
+        height: 70px;
+      }
+
+      #touchPause {
+        right: 26px;
+        bottom: 110px;
+        width: 58px;
+        height: 58px;
+      }
+
+      #helpButton,
+      #pauseButton {
+        width: 38px;
+        height: 38px;
+        font-size: 17px;
+      }
+
+      #helpPanel {
+        width: min(88vw, 300px);
+      }
+    }
+
+    @media (pointer: coarse) and (orientation: portrait) {
+      #status {
+        left: max(10px, env(safe-area-inset-left));
+        top: max(10px, env(safe-area-inset-top));
+        max-width: 44vw;
+      }
+
+      #message {
+        right: max(10px, env(safe-area-inset-right));
+        top: max(10px, env(safe-area-inset-top));
+        max-width: 44vw;
+      }
+
+      #actionStatus {
+        left: 50%;
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 196px);
+        min-width: 170px;
+        max-width: 58vw;
+      }
+
+      #radarWrap {
+        left: max(10px, env(safe-area-inset-left));
+        bottom: calc(max(10px, env(safe-area-inset-bottom)) + 174px);
+      }
+
+      #radar {
+        width: 92px;
+        height: 92px;
+      }
+
+      #joystickZone {
+        width: 150px;
+        height: 150px;
+      }
+
+      #actionZone {
+        width: 182px;
+        height: 210px;
+      }
+
+      #touchFire {
+        width: 86px;
+        height: 86px;
+      }
+
+      #touchReload {
+        right: 88px;
+        bottom: 40px;
+      }
+
+      #touchPause {
+        right: 22px;
+        bottom: 132px;
+      }
+    }
+
+    @media (pointer: coarse) and (orientation: landscape) {
+      #actionStatus {
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 88px);
       }
     }
   </style>
 </head>
 <body>
   <canvas id="game"></canvas>
+  <div id="rotateNotice">Rotate your device for best play</div>
 
   <div class="hud">
     <div class="panel" id="status">
@@ -471,6 +648,7 @@
     const touchPause = document.getElementById("touchPause");
     const joystickZone = document.getElementById("joystickZone");
     const joystickStick = document.getElementById("joystickStick");
+    const rotateNotice = document.getElementById("rotateNotice");
 
     const TAU = Math.PI * 2;
     const keys = Object.create(null);
@@ -760,9 +938,22 @@
       playTone({ frequency: 620, slideTo: 540, duration: 0.05, type: "triangle", volume: 0.018 });
     }
 
+    // Mobile viewport handling uses the visible viewport height so Safari bars do not squash the canvas.
+    function updateViewportVars() {
+      const visibleHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      document.documentElement.style.setProperty("--app-height", `${visibleHeight}px`);
+    }
+
+    function updateOrientationPrompt() {
+      const show = isTouchDevice && window.innerHeight > window.innerWidth;
+      rotateNotice.classList.toggle("show", show);
+    }
+
     function resize() {
+      updateViewportVars();
       canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      canvas.height = window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight;
+      updateOrientationPrompt();
     }
 
     function clamp(value, min, max) {
@@ -1999,6 +2190,21 @@
     }
 
     window.addEventListener("resize", resize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", resize);
+      window.visualViewport.addEventListener("scroll", resize);
+    }
+
+    document.addEventListener("touchmove", (event) => {
+      if (event.target.closest("input, textarea")) return;
+      event.preventDefault();
+    }, { passive: false });
+    document.addEventListener("gesturestart", (event) => {
+      event.preventDefault();
+    }, { passive: false });
+    document.addEventListener("gesturechange", (event) => {
+      event.preventDefault();
+    }, { passive: false });
 
     window.addEventListener("keydown", (event) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) {
