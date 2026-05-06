@@ -342,18 +342,18 @@
     }
 
     #chessBoard {
-      width: min(88vw, 320px);
+      width: min(90vw, 432px);
       margin: 0 auto;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 6px;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 4px;
     }
 
     .chess-cell {
       aspect-ratio: 1;
       border: 0;
-      border-radius: 12px;
-      font: 700 28px "Trebuchet MS", Verdana, sans-serif;
+      border-radius: 8px;
+      font: 700 24px "Trebuchet MS", Verdana, sans-serif;
       cursor: pointer;
       color: #152131;
       touch-action: manipulation;
@@ -494,6 +494,29 @@
     }
 
     #gyroCalibrate.show {
+      display: block;
+    }
+
+    #gyroPermissionButton {
+      position: fixed;
+      left: 50%;
+      top: calc(max(18px, env(safe-area-inset-top)) + 18px);
+      transform: translateX(-50%);
+      min-width: 180px;
+      height: 38px;
+      padding: 0 14px;
+      border: 2px solid rgba(176, 112, 43, 0.28);
+      border-radius: 999px;
+      background: rgba(255, 245, 210, 0.96);
+      color: #5a3818;
+      box-shadow: 0 10px 22px rgba(104, 66, 16, 0.18);
+      font: 700 13px "Trebuchet MS", Verdana, sans-serif;
+      z-index: 7;
+      display: none;
+      touch-action: manipulation;
+    }
+
+    #gyroPermissionButton.show {
       display: block;
     }
 
@@ -680,6 +703,13 @@
         padding: 0 8px;
         font-size: 9px;
       }
+
+      #gyroPermissionButton {
+        min-width: 156px;
+        height: 32px;
+        font-size: 11px;
+        top: calc(max(10px, env(safe-area-inset-top)) + 10px);
+      }
     }
 
     @media (pointer: coarse) and (orientation: portrait) {
@@ -756,6 +786,7 @@
 <body>
   <canvas id="game"></canvas>
   <div id="rotateNotice">Rotate your device for best play</div>
+  <button id="gyroPermissionButton" aria-label="Request gyroscope permission">Enable Gyro Steering</button>
 
   <div class="hud">
     <div class="panel" id="status">
@@ -846,8 +877,8 @@ The enemy is in full retreat.</p>
 
       <div id="chessStage" class="ending-stage" hidden>
         <h2 class="ending-title">Nice Game of Chess</h2>
-        <p id="chessStatus">Tiny chess. Capture the black king. The machine is feeling generous.</p>
-        <div id="chessBoard" aria-label="Mini chess board"></div>
+        <p id="chessStatus">A real little chess game. The machine is not very bright.</p>
+        <div id="chessBoard" aria-label="Chess board"></div>
         <div class="ending-actions">
           <button id="exitChessButton" class="ending-secondary">Exit Chess</button>
         </div>
@@ -890,6 +921,7 @@ The enemy is in full retreat.</p>
     const pauseButton = document.getElementById("pauseButton");
     const gyroToggle = document.getElementById("gyroToggle");
     const gyroCalibrate = document.getElementById("gyroCalibrate");
+    const gyroPermissionButton = document.getElementById("gyroPermissionButton");
     const helpPanel = document.getElementById("helpPanel");
     const closeHelp = document.getElementById("closeHelp");
     const pauseOverlay = document.getElementById("pauseOverlay");
@@ -1127,6 +1159,7 @@ The enemy is in full retreat.</p>
       gyro: {
         supported: false,
         enabled: false,
+        permissionReady: false,
         gamma: 0,
         beta: 0,
         neutralGamma: 0,
@@ -1255,10 +1288,19 @@ The enemy is in full retreat.</p>
       return isTouchDevice && "DeviceOrientationEvent" in window;
     }
 
+    function needsGyroPermissionPrompt() {
+      return supportsGyroSteering()
+        && typeof DeviceOrientationEvent !== "undefined"
+        && typeof DeviceOrientationEvent.requestPermission === "function"
+        && !world.gyro.permissionReady
+        && !world.gyro.enabled;
+    }
+
     function updateGyroToggle() {
       world.gyro.supported = supportsGyroSteering();
       gyroToggle.classList.toggle("show", world.gyro.supported);
       gyroCalibrate.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
+      gyroPermissionButton.classList.toggle("show", needsGyroPermissionPrompt());
       gyroToggle.textContent = `Gyro Steering: ${world.gyro.enabled ? "On" : "Off"}`;
       gyroToggle.disabled = !world.gyro.supported;
       gyroCalibrate.disabled = !world.gyro.supported || !world.gyro.enabled;
@@ -1284,20 +1326,9 @@ The enemy is in full retreat.</p>
       return clamp((absOffset - deadZone) / (maxValue - deadZone), 0, 1) * Math.sign(offset);
     }
 
-    async function toggleGyroSteering() {
-      startSoundtrack();
-      playUiClickSound();
-      if (!supportsGyroSteering()) return;
-      if (!world.gyro.enabled && typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
-        try {
-          const result = await DeviceOrientationEvent.requestPermission();
-          if (result !== "granted") return;
-        } catch (error) {
-          return;
-        }
-      }
-      world.gyro.enabled = !world.gyro.enabled;
-      if (world.gyro.enabled) {
+    function setGyroEnabled(enabled) {
+      world.gyro.enabled = enabled;
+      if (enabled) {
         calibrateGyroSteering();
         window.addEventListener("deviceorientation", onDeviceOrientation);
       } else {
@@ -1308,6 +1339,38 @@ The enemy is in full retreat.</p>
         window.removeEventListener("deviceorientation", onDeviceOrientation);
       }
       updateGyroToggle();
+    }
+
+    async function requestGyroPermission(enableAfterGrant = true) {
+      if (!supportsGyroSteering()) return false;
+      if (typeof DeviceOrientationEvent === "undefined" || typeof DeviceOrientationEvent.requestPermission !== "function") {
+        world.gyro.permissionReady = true;
+        if (enableAfterGrant) setGyroEnabled(true);
+        updateGyroToggle();
+        return true;
+      }
+      try {
+        const result = await DeviceOrientationEvent.requestPermission();
+        if (result !== "granted") return false;
+        world.gyro.permissionReady = true;
+        if (enableAfterGrant) setGyroEnabled(true);
+        updateGyroToggle();
+        return true;
+      } catch (error) {
+        return false;
+      }
+    }
+
+    async function toggleGyroSteering() {
+      startSoundtrack();
+      playUiClickSound();
+      if (!supportsGyroSteering()) return;
+      if (!world.gyro.enabled && !world.gyro.permissionReady) {
+        const granted = await requestGyroPermission(true);
+        if (!granted) return;
+        return;
+      }
+      setGyroEnabled(!world.gyro.enabled);
     }
 
     // Mobile camera adjustment pulls the view back slightly so enemies are easier to see around the cannon.
@@ -1599,33 +1662,45 @@ The enemy is in full retreat.</p>
       return glyphs[`${piece.side}${piece.type}`] || "";
     }
 
+    // Chess easter egg uses a real 8x8 board with lightweight rules and a weak opponent.
     function createTinyChessBoard() {
-      return [
-        makePiece("b", "r"), makePiece("b", "q"), makePiece("b", "k"), makePiece("b", "r"),
-        makePiece("b", "p"), makePiece("b", "p"), makePiece("b", "p"), makePiece("b", "p"),
-        makePiece("w", "p"), makePiece("w", "p"), makePiece("w", "p"), makePiece("w", "p"),
-        makePiece("w", "r"), makePiece("w", "q"), makePiece("w", "k"), makePiece("w", "r"),
-      ];
+      const board = new Array(64).fill(null);
+      const backRank = ["r", "n", "b", "q", "k", "b", "n", "r"];
+      for (let col = 0; col < 8; col += 1) {
+        board[col] = makePiece("b", backRank[col]);
+        board[8 + col] = makePiece("b", "p");
+        board[48 + col] = makePiece("w", "p");
+        board[56 + col] = makePiece("w", backRank[col]);
+      }
+      return board;
     }
 
     function chessInside(row, col) {
-      return row >= 0 && row < 4 && col >= 0 && col < 4;
+      return row >= 0 && row < 8 && col >= 0 && col < 8;
     }
 
-    function getChessMoves(index, board) {
+    function getChessIndex(row, col) {
+      return row * 8 + col;
+    }
+
+    function cloneChessBoard(board) {
+      return board.map((piece) => piece ? { ...piece } : null);
+    }
+
+    function getPseudoChessMoves(index, board, attackOnly = false) {
       const piece = board[index];
       if (!piece) return [];
-      const row = Math.floor(index / 4);
-      const col = index % 4;
+      const row = Math.floor(index / 8);
+      const col = index % 8;
       const moves = [];
-      const push = (r, c, sliding = false, dr = 0, dc = 0) => {
-        let nr = r;
-        let nc = c;
+      const pushRay = (dr, dc, sliding = true) => {
+        let nr = row + dr;
+        let nc = col + dc;
         while (chessInside(nr, nc)) {
-          const targetIndex = nr * 4 + nc;
+          const targetIndex = getChessIndex(nr, nc);
           const target = board[targetIndex];
           if (!target) {
-            moves.push(targetIndex);
+            if (!attackOnly || piece.type !== "p") moves.push(targetIndex);
           } else {
             if (target.side !== piece.side) moves.push(targetIndex);
             break;
@@ -1638,31 +1713,97 @@ The enemy is in full retreat.</p>
 
       if (piece.type === "p") {
         const forward = piece.side === "w" ? -1 : 1;
+        const startRow = piece.side === "w" ? 6 : 1;
         const nextRow = row + forward;
-        if (chessInside(nextRow, col) && !board[nextRow * 4 + col]) {
-          moves.push(nextRow * 4 + col);
+        if (!attackOnly && chessInside(nextRow, col) && !board[getChessIndex(nextRow, col)]) {
+          moves.push(getChessIndex(nextRow, col));
+          const jumpRow = row + forward * 2;
+          if (row === startRow && chessInside(jumpRow, col) && !board[getChessIndex(jumpRow, col)]) {
+            moves.push(getChessIndex(jumpRow, col));
+          }
         }
         for (const dc of [-1, 1]) {
           const captureCol = col + dc;
           if (!chessInside(nextRow, captureCol)) continue;
-          const targetIndex = nextRow * 4 + captureCol;
+          const targetIndex = getChessIndex(nextRow, captureCol);
           const target = board[targetIndex];
-          if (target && target.side !== piece.side) moves.push(targetIndex);
+          if (attackOnly) {
+            moves.push(targetIndex);
+          } else if (target && target.side !== piece.side) {
+            moves.push(targetIndex);
+          }
         }
+      } else if (piece.type === "n") {
+        for (const [dr, dc] of [[2, 1], [2, -1], [-2, 1], [-2, -1], [1, 2], [1, -2], [-1, 2], [-1, -2]]) {
+          const nr = row + dr;
+          const nc = col + dc;
+          if (!chessInside(nr, nc)) continue;
+          const targetIndex = getChessIndex(nr, nc);
+          const target = board[targetIndex];
+          if (!target || target.side !== piece.side) moves.push(targetIndex);
+        }
+      } else if (piece.type === "b") {
+        for (const [dr, dc] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) pushRay(dr, dc, true);
       } else if (piece.type === "r") {
-        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
-          push(row + dr, col + dc, true, dr, dc);
-        }
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) pushRay(dr, dc, true);
       } else if (piece.type === "q") {
-        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-          push(row + dr, col + dc, true, dr, dc);
-        }
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) pushRay(dr, dc, true);
       } else if (piece.type === "k") {
-        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
-          push(row + dr, col + dc);
-        }
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) pushRay(dr, dc, false);
       }
       return moves;
+    }
+
+    function findKing(board, side) {
+      return board.findIndex((piece) => piece && piece.side === side && piece.type === "k");
+    }
+
+    function applyChessMoveToBoard(board, from, to) {
+      const next = cloneChessBoard(board);
+      const moving = next[from];
+      next[to] = moving ? { ...moving } : null;
+      next[from] = null;
+      if (next[to] && next[to].type === "p") {
+        const row = Math.floor(to / 8);
+        if ((next[to].side === "w" && row === 0) || (next[to].side === "b" && row === 7)) {
+          next[to].type = "q";
+        }
+      }
+      return next;
+    }
+
+    function isKingInCheck(board, side) {
+      const kingIndex = findKing(board, side);
+      if (kingIndex < 0) return true;
+      const enemySide = side === "w" ? "b" : "w";
+      for (let i = 0; i < board.length; i += 1) {
+        const piece = board[i];
+        if (!piece || piece.side !== enemySide) continue;
+        if (getPseudoChessMoves(i, board, true).includes(kingIndex)) return true;
+      }
+      return false;
+    }
+
+    function getChessMoves(index, board) {
+      const piece = board[index];
+      if (!piece) return [];
+      const legalMoves = [];
+      for (const targetIndex of getPseudoChessMoves(index, board, false)) {
+        const testBoard = applyChessMoveToBoard(board, index, targetIndex);
+        if (!isKingInCheck(testBoard, piece.side)) {
+          legalMoves.push(targetIndex);
+        }
+      }
+      return legalMoves;
+    }
+
+    function hasAnyLegalMoves(board, side) {
+      for (let i = 0; i < board.length; i += 1) {
+        const piece = board[i];
+        if (!piece || piece.side !== side) continue;
+        if (getChessMoves(i, board).length > 0) return true;
+      }
+      return false;
     }
 
     function renderChessBoard() {
@@ -1691,15 +1832,22 @@ The enemy is in full retreat.</p>
     }
 
     function moveChessPiece(from, to) {
-      const board = world.chess.board.slice();
-      const moving = board[from];
-      const target = board[to];
-      board[to] = moving;
-      board[from] = null;
-      world.chess.board = board;
+      const moving = world.chess.board[from];
+      const target = world.chess.board[to];
+      world.chess.board = applyChessMoveToBoard(world.chess.board, from, to);
       world.chess.selected = -1;
       if (target && target.type === "k") {
-        finishChess(moving.side === "w" ? "Checkmate enough. You win." : "The machine takes the king, gently.");
+        finishChess(moving.side === "w" ? "Checkmate. You win." : "The machine somehow found mate.");
+        return true;
+      }
+      const enemySide = moving.side === "w" ? "b" : "w";
+      const enemyHasMoves = hasAnyLegalMoves(world.chess.board, enemySide);
+      if (!enemyHasMoves) {
+        if (isKingInCheck(world.chess.board, enemySide)) {
+          finishChess(moving.side === "w" ? "Checkmate. You win." : "Checkmate. The machine wins, somehow.");
+        } else {
+          finishChess("Stalemate. Peace at last.");
+        }
         return true;
       }
       return false;
@@ -1720,17 +1868,26 @@ The enemy is in full retreat.</p>
       if (!world.chess.active || world.chess.turn !== "b") return;
       const moves = getAllChessMoves("b");
       if (moves.length === 0) {
-        finishChess("The machine shrugs. You win by surviving.");
+        finishChess(isKingInCheck(world.chess.board, "b") ? "Checkmate. You win." : "Stalemate. The machine shrugs.");
         return;
       }
       const captures = moves.filter((move) => move.target);
-      const kingCapture = captures.find((move) => move.target.type === "k");
-      const choicePool = kingCapture ? [kingCapture] : captures.length ? captures : moves;
-      const move = choicePool[(Math.random() * choicePool.length) | 0];
+      const checks = moves.filter((move) => {
+        const nextBoard = applyChessMoveToBoard(world.chess.board, move.from, move.to);
+        return isKingInCheck(nextBoard, "w");
+      });
+      const weakPool = captures.length && Math.random() < 0.55
+        ? captures
+        : checks.length && Math.random() < 0.35
+          ? checks
+          : moves;
+      const move = weakPool[(Math.random() * weakPool.length) | 0];
       const ended = moveChessPiece(move.from, move.to);
       if (!ended) {
         world.chess.turn = "w";
-        world.chess.status = "Your move. Capture the black king.";
+        world.chess.status = isKingInCheck(world.chess.board, "w")
+          ? "Check on you. The machine got lucky."
+          : "Your move.";
         renderChessBoard();
       }
     }
@@ -1755,21 +1912,23 @@ The enemy is in full retreat.</p>
         renderChessBoard();
         if (!ended) {
           world.chess.turn = "b";
-          world.chess.status = "Machine thinking very slowly...";
+          world.chess.status = isKingInCheck(world.chess.board, "b")
+            ? "Check on black. Machine thinking very slowly..."
+            : "Machine thinking very slowly...";
           renderChessBoard();
           queueEndingTimer(runChessAiTurn, 700);
         }
       }
     }
 
-    // Chess easter egg stays intentionally tiny and beginner-friendly.
+    // Chess easter egg stays intentionally simple, but it is now a real little game.
     function startTinyChess() {
       clearEndingTimers();
       showEndingStage("chess");
       world.chess.board = createTinyChessBoard();
       world.chess.selected = -1;
       world.chess.turn = "w";
-      world.chess.status = "Your move. Capture the black king.";
+      world.chess.status = "Your move. Standard pieces, very weak machine.";
       world.chess.active = true;
       renderChessBoard();
     }
@@ -2984,14 +3143,14 @@ The enemy is in full retreat.</p>
     let lastTapAt = 0;
     document.addEventListener("touchend", (event) => {
       if (event.target.closest("input, textarea")) return;
-      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #gyroCalibrate, #pauseOverlay, #helpPanel, #endingOverlay")) return;
+      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #gyroCalibrate, #gyroPermissionButton, #pauseOverlay, #helpPanel, #endingOverlay")) return;
       const now = performance.now();
       if (now - lastTapAt < 320) {
         event.preventDefault();
       }
       lastTapAt = now;
     }, { passive: false });
-    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, gyroCalibrate, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
+    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, gyroCalibrate, gyroPermissionButton, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
       target.addEventListener("dblclick", (event) => {
         event.preventDefault();
       });
@@ -3042,6 +3201,11 @@ The enemy is in full retreat.</p>
       startSoundtrack();
       playUiClickSound();
       calibrateGyroSteering();
+    });
+    gyroPermissionButton.addEventListener("click", async () => {
+      startSoundtrack();
+      playUiClickSound();
+      await requestGyroPermission(true);
     });
     resumeButton.addEventListener("click", () => togglePause(false));
     touchPause.addEventListener("click", () => togglePause());
