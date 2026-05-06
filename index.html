@@ -520,6 +520,26 @@
       display: block;
     }
 
+    #gyroHint {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      top: calc(max(18px, env(safe-area-inset-top)) + 124px);
+      max-width: 190px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(255, 245, 210, 0.84);
+      color: #5a3818;
+      box-shadow: 0 8px 18px rgba(104, 66, 16, 0.12);
+      font: 700 11px/1.35 "Trebuchet MS", Verdana, sans-serif;
+      z-index: 6;
+      display: none;
+      pointer-events: none;
+    }
+
+    #gyroHint.show {
+      display: block;
+    }
+
     .touchBtn {
       position: absolute;
       border: 2px solid rgba(255, 241, 195, 0.3);
@@ -710,6 +730,14 @@
         font-size: 11px;
         top: calc(max(10px, env(safe-area-inset-top)) + 10px);
       }
+
+      #gyroHint {
+        left: max(10px, env(safe-area-inset-left));
+        top: calc(max(10px, env(safe-area-inset-top)) + 100px);
+        max-width: 150px;
+        padding: 6px 8px;
+        font-size: 9px;
+      }
     }
 
     @media (pointer: coarse) and (orientation: portrait) {
@@ -787,6 +815,7 @@
   <canvas id="game"></canvas>
   <div id="rotateNotice">Rotate your device for best play</div>
   <button id="gyroPermissionButton" aria-label="Request gyroscope permission">Enable Gyro Steering</button>
+  <div id="gyroHint">Hold device comfortably, then tap calibrate.</div>
 
   <div class="hud">
     <div class="panel" id="status">
@@ -819,7 +848,7 @@
   <button id="helpButton" class="ui-button" aria-label="Show controls">?</button>
   <button id="pauseButton" class="ui-button" aria-label="Pause game">P</button>
   <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Gyro Steering: Off</button>
-  <button id="gyroCalibrate" aria-label="Calibrate gyroscopic steering">Calibrate</button>
+  <button id="gyroCalibrate" aria-label="Calibrate gyroscopic steering">Calibrate Steering</button>
 
   <div id="helpPanel" aria-hidden="true">
     <button id="closeHelp" aria-label="Close controls">x</button>
@@ -922,6 +951,7 @@ The enemy is in full retreat.</p>
     const gyroToggle = document.getElementById("gyroToggle");
     const gyroCalibrate = document.getElementById("gyroCalibrate");
     const gyroPermissionButton = document.getElementById("gyroPermissionButton");
+    const gyroHint = document.getElementById("gyroHint");
     const helpPanel = document.getElementById("helpPanel");
     const closeHelp = document.getElementById("closeHelp");
     const pauseOverlay = document.getElementById("pauseOverlay");
@@ -968,6 +998,8 @@ The enemy is in full retreat.</p>
     const MOBILE_AIM_SPEED = 0.8;
     const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900;
     const BONUS_ROUND_MS = 75000;
+    const PICKUP_SPAWN_MS = 13500;
+    const TEMP_BONUS_MS = 12000;
     const GYRO_DEAD_ZONE = 3.5;
     const GYRO_MAX_TILT = 18;
     const GYRO_MOVE_DEAD_ZONE = 4.5;
@@ -980,6 +1012,13 @@ The enemy is in full retreat.</p>
       "Victory belongs to the most persevering. - Napoleon Bonaparte",
       "No soldier outlives a thousand chances. - Erwin Rommel"
     ];
+
+    const PICKUP_TYPES = {
+      armor: { label: "Super Armor", color: "#73f0ff" },
+      rockets: { label: "Long-Range Rockets", color: "#ffcc73" },
+      mega: { label: "Mega Charge", color: "#ff78b7" },
+      heal: { label: "Full Heal", color: "#8dff9c" },
+    };
 
     const ENEMY_TYPES = {
       jeep: {
@@ -1125,6 +1164,7 @@ The enemy is in full retreat.</p>
         bob: 0,
       },
       enemies: [],
+      pickups: [],
       projectiles: [],
       effects: [],
       hazards: {
@@ -1148,6 +1188,7 @@ The enemy is in full retreat.</p>
       messageUntil: 0,
       roundStartAt: 0,
       lastSpawnAt: 0,
+      lastPickupSpawnAt: 0,
       lastEnemyShotAt: 0,
       floorMarks: [],
       finalName: "",
@@ -1156,6 +1197,7 @@ The enemy is in full retreat.</p>
         active: false,
         endsAt: 0,
       },
+      activeBonus: null,
       gyro: {
         supported: false,
         enabled: false,
@@ -1301,6 +1343,7 @@ The enemy is in full retreat.</p>
       gyroToggle.classList.toggle("show", world.gyro.supported);
       gyroCalibrate.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
       gyroPermissionButton.classList.toggle("show", needsGyroPermissionPrompt());
+      gyroHint.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
       gyroToggle.textContent = `Gyro Steering: ${world.gyro.enabled ? "On" : "Off"}`;
       gyroToggle.disabled = !world.gyro.supported;
       gyroCalibrate.disabled = !world.gyro.supported || !world.gyro.enabled;
@@ -1494,6 +1537,73 @@ The enemy is in full retreat.</p>
         if (roll <= 0) return type;
       }
       return entries[0][0];
+    }
+
+    function getPickupType() {
+      const types = ["armor", "rockets", "mega", "heal"];
+      return types[(Math.random() * types.length) | 0];
+    }
+
+    // Pickup system stays intentionally lightweight: one field bonus at a time, no inventory.
+    function spawnPickup(now = performance.now()) {
+      if (world.pickups.length >= 2) return;
+      const distance = rand(380, 920);
+      const angle = world.player.angle + rand(-0.85, 0.85);
+      const type = getPickupType();
+      world.pickups.push({
+        type,
+        x: world.player.x + Math.cos(angle) * distance,
+        y: world.player.y + Math.sin(angle) * distance,
+        bornAt: now,
+        pulse: rand(0, TAU),
+      });
+      world.lastPickupSpawnAt = now;
+    }
+
+    function clearActiveBonus() {
+      world.activeBonus = null;
+    }
+
+    function grantPickup(type, now) {
+      if (type === "heal") {
+        world.player.health = PLAYER_MAX_HEALTH;
+        world.player.lastHealAt = now;
+        showMessage("Full Repair", now, 1800);
+        clearActiveBonus();
+        return;
+      }
+      if (type === "mega") {
+        world.player.charging = true;
+        world.player.chargeStart = now - CHARGE_TIME_MS;
+        world.player.chargeAmount = 1;
+        showMessage("Mega Charge", now, 1800);
+        clearActiveBonus();
+        return;
+      }
+      world.activeBonus = {
+        type,
+        until: now + TEMP_BONUS_MS,
+      };
+      showMessage(PICKUP_TYPES[type].label, now, 1800);
+    }
+
+    function updatePickups(now) {
+      if (world.activeBonus && now >= world.activeBonus.until) {
+        clearActiveBonus();
+      }
+      if (!world.gameOver && !world.victory && now - world.lastPickupSpawnAt >= PICKUP_SPAWN_MS && Math.random() < 0.55) {
+        spawnPickup(now);
+      }
+      const kept = [];
+      for (const pickup of world.pickups) {
+        if (Math.hypot(world.player.x - pickup.x, world.player.y - pickup.y) < 72) {
+          grantPickup(pickup.type, now);
+          continue;
+        }
+        if (Math.hypot(world.player.x - pickup.x, world.player.y - pickup.y) > 1800) continue;
+        kept.push(pickup);
+      }
+      world.pickups = kept;
     }
 
     function spawnEnemy(now = performance.now(), forcedType = null) {
@@ -1985,6 +2095,7 @@ The enemy is in full retreat.</p>
       world.bonusRound.active = true;
       world.bonusRound.endsAt = now + BONUS_ROUND_MS;
       world.enemies = [];
+      world.pickups = [];
       world.projectiles = [];
       world.effects = [];
       world.lastSpawnAt = 0;
@@ -2051,6 +2162,7 @@ The enemy is in full retreat.</p>
       world.radarAlert = false;
       world.lastRadarUpdate = 0;
       world.lastSpawnAt = 0;
+      world.lastPickupSpawnAt = now - PICKUP_SPAWN_MS * 0.45;
       world.lastEnemyShotAt = 0;
       world.messageText = "";
       world.messageUntil = 0;
@@ -2058,6 +2170,7 @@ The enemy is in full retreat.</p>
       world.endingText = "General, you have won the war. The enemy is in full retreat.";
       world.bonusRound.active = false;
       world.bonusRound.endsAt = 0;
+      world.activeBonus = null;
       world.gyro.gamma = 0;
       world.gyro.beta = 0;
       world.gyro.neutralGamma = 0;
@@ -2097,8 +2210,12 @@ The enemy is in full retreat.</p>
       healthEl.className = `value ${world.player.health <= 2 ? "danger" : ""} ${blinking ? "blink" : ""} ${healing ? "good" : ""}`;
 
       if (now < world.player.invincibleUntil) {
-        healthHintEl.textContent = "Recovering";
+        healthHintEl.textContent = world.activeBonus?.type === "armor" ? "Super Armor" : "Recovering";
         healthHintEl.className = "value small danger";
+      } else if (world.activeBonus) {
+        const seconds = Math.max(0, Math.ceil((world.activeBonus.until - now) / 1000));
+        healthHintEl.textContent = `${PICKUP_TYPES[world.activeBonus.type].label} ${seconds}s`;
+        healthHintEl.className = "value small good";
       } else if (healing) {
         healthHintEl.textContent = "Regenerating";
         healthHintEl.className = "value small good";
@@ -2130,6 +2247,9 @@ The enemy is in full retreat.</p>
         : world.mode === "bonus"
           ? "Neon cleanup"
         : currentPhase().challenge;
+      if (world.activeBonus && !compactHud) {
+        challengeTextEl.textContent = `${challengeTextEl.textContent} • ${PICKUP_TYPES[world.activeBonus.type].label}`;
+      }
 
       const weatherLabel = world.weather === "dust" ? "Dust" : world.weather === "sunset" ? "Sunset" : "Clear";
       scoreWeatherEl.textContent = compactHud
@@ -2227,7 +2347,7 @@ The enemy is in full retreat.</p>
       return found;
     }
 
-    function getAimTarget() {
+    function getAimTarget(maxRange = 1300) {
       const aimAngle = getViewAngle();
       let closest = null;
       let bestDistance = Infinity;
@@ -2239,7 +2359,7 @@ The enemy is in full retreat.</p>
         const angleToEnemy = Math.atan2(dy, dx);
         const angleDiff = Math.abs(angleWrap(angleToEnemy - aimAngle));
         const widthAllowance = enemy.boss ? 0.16 : enemy.kind === "tank" ? 0.11 : 0.09;
-        if (angleDiff < widthAllowance && distance < 1300 && distance < bestDistance) {
+        if (angleDiff < widthAllowance && distance < maxRange && distance < bestDistance) {
           bestDistance = distance;
           closest = enemy;
         }
@@ -2256,10 +2376,12 @@ The enemy is in full retreat.</p>
 
     function firePlayer(now, isMega) {
       if (world.gameOver || world.victory || world.player.reloading || world.player.ammo <= 0) return;
-      const targetEnemy = getAimTarget();
+      const rocketBonus = world.activeBonus?.type === "rockets";
+      const targetEnemy = getAimTarget(rocketBonus ? 1650 : 1300);
       const aimAngle = getViewAngle();
-      const endX = targetEnemy ? targetEnemy.x : world.player.x + Math.cos(aimAngle) * 960;
-      const endY = targetEnemy ? targetEnemy.y : world.player.y + Math.sin(aimAngle) * 960;
+      const shotRange = rocketBonus ? 1380 : 960;
+      const endX = targetEnemy ? targetEnemy.x : world.player.x + Math.cos(aimAngle) * shotRange;
+      const endY = targetEnemy ? targetEnemy.y : world.player.y + Math.sin(aimAngle) * shotRange;
 
       world.player.ammo -= 1;
       world.player.recoil = isMega ? 1.7 : 1;
@@ -2275,7 +2397,7 @@ The enemy is in full retreat.</p>
         impactAt: now + PLAYER_SHOT_DELAY_MS,
         life: 240,
         mega: isMega,
-        damage: isMega ? 0 : 1,
+        damage: isMega ? 0 : rocketBonus ? 2 : 1,
         radius: isMega ? 320 : 0,
         resolved: false,
       });
@@ -2492,6 +2614,10 @@ The enemy is in full retreat.</p>
           const dy = world.player.y - shot.y;
           if (Math.hypot(dx, dy) < 50 && !world.gameOver) {
             if (now < world.player.invincibleUntil) continue;
+            if (world.activeBonus?.type === "armor") {
+              world.player.invincibleUntil = now + 220;
+              continue;
+            }
             world.player.health -= 1;
             world.player.invincibleUntil = now + HIT_INVINCIBLE_MS;
             world.player.lastHitAt = now;
@@ -2525,7 +2651,7 @@ The enemy is in full retreat.</p>
           } else {
             const target = shot.targetEnemy && shot.targetEnemy.alive ? shot.targetEnemy : null;
             if (target) {
-              damageEnemy(target, 1, now);
+              damageEnemy(target, shot.damage, now);
             }
           }
         }
@@ -2536,6 +2662,25 @@ The enemy is in full retreat.</p>
 
     function updateEffects(now) {
       world.effects = world.effects.filter((effect) => now - effect.bornAt <= effect.life);
+    }
+
+    function drawPickups(now) {
+      for (const pickup of world.pickups) {
+        const p = projectToScreen(pickup.x, pickup.y);
+        if (!p) continue;
+        const pulse = 0.75 + Math.sin(now * 0.006 + pickup.pulse) * 0.18;
+        const color = PICKUP_TYPES[pickup.type].color;
+        const baseY = p.y + 48 * p.scale;
+        ctx.fillStyle = `${color}${Math.floor(120).toString(16).padStart(2, "0")}`;
+        ctx.beginPath();
+        ctx.arc(p.x, baseY, Math.max(6, 14 * p.scale * pulse), 0, TAU);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = Math.max(2, 4 * p.scale);
+        ctx.beginPath();
+        ctx.arc(p.x, baseY, Math.max(9, 20 * p.scale * pulse), 0, TAU);
+        ctx.stroke();
+      }
     }
 
     function projectToScreen(x, y) {
@@ -3028,19 +3173,24 @@ The enemy is in full retreat.</p>
 
     function drawGameOver() {
       if (!world.gameOver) return;
-      ctx.fillStyle = "rgba(0,0,0,0.52)";
+      ctx.fillStyle = "rgba(0,0,0,0.64)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       ctx.fillStyle = "#fff1cb";
       ctx.textAlign = "center";
       ctx.font = "700 48px Trebuchet MS";
       ctx.fillText("Game Over", canvas.width * 0.5, canvas.height * 0.46);
-      ctx.font = "24px Trebuchet MS";
-      ctx.fillText("Press Enter to restart", canvas.width * 0.5, canvas.height * 0.54);
+      ctx.font = isTouchDevice ? "700 30px Trebuchet MS" : "24px Trebuchet MS";
+      ctx.fillText(isTouchDevice ? "Tap to Play Again" : "Press Enter to restart", canvas.width * 0.5, canvas.height * 0.54);
+      if (isTouchDevice) {
+        ctx.fillStyle = "rgba(255, 241, 203, 0.12)";
+        ctx.fillRect(0, canvas.height * 0.58, canvas.width, canvas.height * 0.42);
+      }
     }
 
     function render(now) {
       drawSky();
       drawGround();
+      drawPickups(now);
       drawEnemies(now);
       drawShotsAndEffects(now);
       drawEdgeIndicators();
@@ -3059,6 +3209,7 @@ The enemy is in full retreat.</p>
       if (!world.paused && !world.gameOver && !world.victory) {
         if (now >= world.nextWeatherAt) switchWeather(now);
         updatePlayer(dt, now);
+        updatePickups(now);
         updateEnemies(dt, now);
         updateProjectiles(dt, now);
         updateEffects(now);
@@ -3124,6 +3275,15 @@ The enemy is in full retreat.</p>
       joystickStick.style.transform = "translate(0px, 0px)";
     }
 
+    // Mobile restart handling keeps game-over recovery touch-friendly instead of keyboard-only.
+    function handleMobileRestart(event) {
+      if (!isTouchDevice || !world.gameOver || world.victory) return;
+      if (event.target.closest("#endingOverlay, #helpPanel, #pauseOverlay")) return;
+      if (event.clientY < canvas.height * 0.42) return;
+      event.preventDefault();
+      resetGame();
+    }
+
     window.addEventListener("resize", resize);
     if (window.visualViewport) {
       window.visualViewport.addEventListener("resize", resize);
@@ -3140,6 +3300,7 @@ The enemy is in full retreat.</p>
     document.addEventListener("gesturechange", (event) => {
       event.preventDefault();
     }, { passive: false });
+    document.addEventListener("pointerdown", handleMobileRestart, { passive: false });
     // Prevent double-tap zoom on the game surface and touch controls.
     let lastTapAt = 0;
     document.addEventListener("touchend", (event) => {
