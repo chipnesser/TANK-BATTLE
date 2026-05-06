@@ -51,6 +51,7 @@
       display: block;
       width: 100vw;
       height: var(--app-height);
+      touch-action: none;
     }
 
     .hud {
@@ -149,6 +150,7 @@
       font: 700 19px "Trebuchet MS", Verdana, sans-serif;
       cursor: pointer;
       z-index: 5;
+      touch-action: manipulation;
     }
 
     #helpButton {
@@ -267,12 +269,125 @@
       line-height: 1.5;
     }
 
+    .ending-stage[hidden] {
+      display: none;
+    }
+
+    #endingOverlay.calm {
+      background: rgba(15, 16, 24, 0.8);
+      backdrop-filter: blur(6px);
+    }
+
+    #endingOverlay.calm .overlay-card {
+      width: min(92vw, 620px);
+      background: rgba(17, 18, 27, 0.92);
+      border-color: rgba(120, 189, 255, 0.2);
+      box-shadow: 0 18px 38px rgba(0, 0, 0, 0.38);
+      color: #d9ebff;
+    }
+
+    #endingOverlay.calm .overlay-card button {
+      background: linear-gradient(180deg, #7bc7ff, #5d8cff);
+      color: #091523;
+    }
+
+    #endingOverlay.calm .overlay-card input {
+      background: rgba(238, 246, 255, 0.96);
+      color: #0d2234;
+      border-color: rgba(123, 199, 255, 0.35);
+    }
+
+    .ending-title {
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #8ecfff;
+    }
+
+    .ending-copy {
+      font-size: 18px;
+      line-height: 1.7;
+      white-space: pre-line;
+    }
+
+    .ending-copy.soft {
+      color: rgba(217, 235, 255, 0.82);
+    }
+
+    .ending-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .ending-secondary {
+      background: linear-gradient(180deg, #d3e8ff, #a7cfff) !important;
+    }
+
+    #epilogueText {
+      min-height: 84px;
+      font: 700 28px/1.5 "Trebuchet MS", Verdana, sans-serif;
+      color: #dff2ff;
+      white-space: pre-line;
+    }
+
+    #chessStage .overlay-card {
+      width: min(94vw, 700px);
+    }
+
+    #chessStatus {
+      margin-bottom: 14px;
+      color: rgba(217, 235, 255, 0.82);
+    }
+
+    #chessBoard {
+      width: min(88vw, 320px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+    }
+
+    .chess-cell {
+      aspect-ratio: 1;
+      border: 0;
+      border-radius: 12px;
+      font: 700 28px "Trebuchet MS", Verdana, sans-serif;
+      cursor: pointer;
+      color: #152131;
+      touch-action: manipulation;
+    }
+
+    .chess-light {
+      background: #d9edf9;
+    }
+
+    .chess-dark {
+      background: #86acd1;
+    }
+
+    .chess-cell.selected {
+      outline: 3px solid #ffe68d;
+      transform: translateY(-1px);
+    }
+
+    .chess-cell.target {
+      box-shadow: inset 0 0 0 3px rgba(111, 255, 152, 0.72);
+    }
+
+    #finalThanks {
+      font-size: 30px;
+      color: #e6f4ff;
+    }
+
     #mobileControls {
       position: fixed;
       inset: 0;
       z-index: 5;
       pointer-events: none;
       display: none;
+      touch-action: none;
     }
 
     #rotateNotice {
@@ -338,6 +453,28 @@
       height: 200px;
     }
 
+    #gyroToggle {
+      position: fixed;
+      left: max(18px, env(safe-area-inset-left));
+      top: calc(max(18px, env(safe-area-inset-top)) + 48px);
+      min-width: 88px;
+      height: 34px;
+      padding: 0 10px;
+      border: 2px solid rgba(176, 112, 43, 0.28);
+      border-radius: 999px;
+      background: rgba(255, 245, 210, 0.92);
+      color: #5a3818;
+      box-shadow: 0 10px 22px rgba(104, 66, 16, 0.16);
+      font: 700 12px "Trebuchet MS", Verdana, sans-serif;
+      z-index: 6;
+      display: none;
+      touch-action: manipulation;
+    }
+
+    #gyroToggle.show {
+      display: block;
+    }
+
     .touchBtn {
       position: absolute;
       border: 2px solid rgba(255, 241, 195, 0.3);
@@ -346,6 +483,7 @@
       color: #fff7dc;
       box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
       font: 700 16px "Trebuchet MS", Verdana, sans-serif;
+      touch-action: manipulation;
     }
 
     #touchFire {
@@ -375,7 +513,7 @@
       }
 
       #pauseButton {
-        display: none;
+        display: block;
       }
 
       #helpPanel {
@@ -401,81 +539,115 @@
       }
 
       #status {
-        min-width: 148px;
-        max-width: 40vw;
+        min-width: 84px;
+        max-width: 25vw;
+        padding: 7px 9px;
+      }
+
+      #status .label,
+      #healthHint {
+        display: none;
       }
 
       #message {
-        min-width: 158px;
-        max-width: 44vw;
+        min-width: 124px;
+        max-width: 30vw;
+        padding: 7px 9px;
+      }
+
+      #message .label {
+        display: none;
       }
 
       #actionStatus {
-        min-width: 180px;
-        max-width: 46vw;
-        bottom: calc(max(18px, env(safe-area-inset-bottom)) + 116px);
-        padding: 8px 10px;
+        min-width: 124px;
+        max-width: 28vw;
+        bottom: calc(max(12px, env(safe-area-inset-bottom)) + 6px);
+        padding: 6px 9px;
+      }
+
+      #actionStatus .label,
+      #challengeText {
+        display: none;
       }
 
       #radarWrap {
         padding: 8px;
+        border-radius: 14px;
       }
 
       #radar {
-        width: 108px;
-        height: 108px;
+        width: 84px;
+        height: 84px;
       }
 
       #joystickZone {
-        width: 160px;
-        height: 160px;
+        width: 128px;
+        height: 128px;
       }
 
       #joystickBase {
-        width: 124px;
-        height: 124px;
+        width: 104px;
+        height: 104px;
       }
 
       #joystickStick {
-        left: 38px;
-        bottom: 38px;
-        width: 48px;
-        height: 48px;
+        left: 28px;
+        bottom: 28px;
+        width: 42px;
+        height: 42px;
       }
 
       #actionZone {
-        width: 190px;
-        height: 184px;
+        width: 160px;
+        height: 138px;
       }
 
       #touchFire {
-        width: 90px;
-        height: 90px;
+        width: 76px;
+        height: 76px;
+        bottom: 4px;
       }
 
       #touchReload {
-        right: 94px;
-        bottom: 30px;
-        width: 70px;
-        height: 70px;
+        right: 80px;
+        bottom: 12px;
+        width: 54px;
+        height: 54px;
       }
 
       #touchPause {
-        right: 26px;
-        bottom: 110px;
-        width: 58px;
-        height: 58px;
+        display: none;
       }
 
       #helpButton,
       #pauseButton {
-        width: 38px;
-        height: 38px;
-        font-size: 17px;
+        width: 34px;
+        height: 34px;
+        font-size: 15px;
       }
 
       #helpPanel {
         width: min(88vw, 300px);
+      }
+
+      #pauseButton {
+        right: max(12px, env(safe-area-inset-right));
+        top: max(12px, env(safe-area-inset-top));
+      }
+
+      #helpButton {
+        right: calc(max(12px, env(safe-area-inset-right)) + 40px);
+        top: max(12px, env(safe-area-inset-top));
+      }
+
+      #gyroToggle {
+        left: max(10px, env(safe-area-inset-left));
+        top: calc(max(10px, env(safe-area-inset-top)) + 40px);
+        min-width: 74px;
+        height: 28px;
+        padding: 0 8px;
+        font-size: 10px;
       }
     }
 
@@ -483,61 +655,65 @@
       #status {
         left: max(10px, env(safe-area-inset-left));
         top: max(10px, env(safe-area-inset-top));
-        max-width: 44vw;
+        max-width: 30vw;
       }
 
       #message {
         right: max(10px, env(safe-area-inset-right));
         top: max(10px, env(safe-area-inset-top));
-        max-width: 44vw;
+        max-width: 42vw;
       }
 
       #actionStatus {
         left: 50%;
-        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 196px);
-        min-width: 170px;
-        max-width: 58vw;
+        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 132px);
+        min-width: 132px;
+        max-width: 48vw;
       }
 
       #radarWrap {
         left: max(10px, env(safe-area-inset-left));
-        bottom: calc(max(10px, env(safe-area-inset-bottom)) + 174px);
+        bottom: calc(max(10px, env(safe-area-inset-bottom)) + 144px);
       }
 
       #radar {
-        width: 92px;
-        height: 92px;
+        width: 74px;
+        height: 74px;
       }
 
       #joystickZone {
-        width: 150px;
-        height: 150px;
+        width: 116px;
+        height: 116px;
       }
 
       #actionZone {
-        width: 182px;
-        height: 210px;
+        width: 156px;
+        height: 128px;
       }
 
       #touchFire {
-        width: 86px;
-        height: 86px;
+        width: 74px;
+        height: 74px;
       }
 
       #touchReload {
-        right: 88px;
-        bottom: 40px;
+        right: 78px;
+        bottom: 12px;
       }
 
-      #touchPause {
-        right: 22px;
-        bottom: 132px;
+      #gyroToggle {
+        top: calc(max(10px, env(safe-area-inset-top)) + 36px);
       }
     }
 
     @media (pointer: coarse) and (orientation: landscape) {
       #actionStatus {
-        bottom: calc(max(16px, env(safe-area-inset-bottom)) + 88px);
+        bottom: calc(max(14px, env(safe-area-inset-bottom)) + 4px);
+      }
+
+      #rotateNotice {
+        font-size: 12px;
+        padding: 8px 12px;
       }
     }
   </style>
@@ -576,6 +752,7 @@
 
   <button id="helpButton" class="ui-button" aria-label="Show controls">?</button>
   <button id="pauseButton" class="ui-button" aria-label="Pause game">P</button>
+  <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Gyro: Off</button>
 
   <div id="helpPanel" aria-hidden="true">
     <button id="closeHelp" aria-label="Close controls">x</button>
@@ -601,11 +778,51 @@
 
   <div id="endingOverlay" aria-hidden="true">
     <div class="overlay-card">
-      <h2>Victory</h2>
-      <p id="endingText">General, you have won the war. The enemy is in full retreat.</p>
-      <input id="playerName" type="text" maxlength="24" placeholder="Enter your name" />
-      <button id="showQuoteButton">Show Quote</button>
-      <div id="quoteBox" hidden></div>
+      <div id="victoryStage" class="ending-stage">
+        <h2 class="ending-title">Transmission Clear</h2>
+        <p id="endingText" class="ending-copy">General, you have won the war.
+The enemy is in full retreat.</p>
+      </div>
+
+      <div id="nameStage" class="ending-stage" hidden>
+        <h2 class="ending-title">Field Report</h2>
+        <p class="ending-copy soft">Enter your name for the final dispatch.</p>
+        <input id="playerName" type="text" maxlength="24" placeholder="Enter your name" />
+        <div class="ending-actions">
+          <button id="showQuoteButton">Continue</button>
+        </div>
+      </div>
+
+      <div id="quoteStage" class="ending-stage" hidden>
+        <h2 class="ending-title">Historical Signal</h2>
+        <div id="quoteBox"></div>
+        <div class="ending-actions">
+          <button id="continueEpilogueButton">Continue</button>
+        </div>
+      </div>
+
+      <div id="epilogueStage" class="ending-stage" hidden>
+        <div id="epilogueText"></div>
+        <div class="ending-actions">
+          <button id="startChessButton" hidden>Start Chess</button>
+        </div>
+      </div>
+
+      <div id="chessStage" class="ending-stage" hidden>
+        <h2 class="ending-title">Nice Game of Chess</h2>
+        <p id="chessStatus">Tiny chess. Capture the black king. The machine is feeling generous.</p>
+        <div id="chessBoard" aria-label="Mini chess board"></div>
+        <div class="ending-actions">
+          <button id="exitChessButton" class="ending-secondary">Exit Chess</button>
+        </div>
+      </div>
+
+      <div id="finalStage" class="ending-stage" hidden>
+        <div id="finalThanks">Thank you for playing.</div>
+        <div class="ending-actions">
+          <button id="playAgainButton">Play Again?</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -635,20 +852,35 @@
     const scoreWeatherEl = document.getElementById("scoreWeather");
     const helpButton = document.getElementById("helpButton");
     const pauseButton = document.getElementById("pauseButton");
+    const gyroToggle = document.getElementById("gyroToggle");
     const helpPanel = document.getElementById("helpPanel");
     const closeHelp = document.getElementById("closeHelp");
     const pauseOverlay = document.getElementById("pauseOverlay");
     const resumeButton = document.getElementById("resumeButton");
     const endingOverlay = document.getElementById("endingOverlay");
+    const victoryStage = document.getElementById("victoryStage");
+    const nameStage = document.getElementById("nameStage");
+    const quoteStage = document.getElementById("quoteStage");
+    const epilogueStage = document.getElementById("epilogueStage");
+    const chessStage = document.getElementById("chessStage");
+    const finalStage = document.getElementById("finalStage");
+    const epilogueText = document.getElementById("epilogueText");
     const playerNameInput = document.getElementById("playerName");
     const showQuoteButton = document.getElementById("showQuoteButton");
     const quoteBox = document.getElementById("quoteBox");
+    const continueEpilogueButton = document.getElementById("continueEpilogueButton");
+    const startChessButton = document.getElementById("startChessButton");
+    const chessBoard = document.getElementById("chessBoard");
+    const chessStatus = document.getElementById("chessStatus");
+    const exitChessButton = document.getElementById("exitChessButton");
+    const playAgainButton = document.getElementById("playAgainButton");
     const touchFire = document.getElementById("touchFire");
     const touchReload = document.getElementById("touchReload");
     const touchPause = document.getElementById("touchPause");
     const joystickZone = document.getElementById("joystickZone");
     const joystickStick = document.getElementById("joystickStick");
     const rotateNotice = document.getElementById("rotateNotice");
+    const gameSurface = document.getElementById("game");
 
     const TAU = Math.PI * 2;
     const keys = Object.create(null);
@@ -666,6 +898,9 @@
     const PHASE_KILL_STEP = 15;
     const MOBILE_AIM_SPEED = 0.8;
     const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900;
+    const BONUS_ROUND_MS = 75000;
+    const GYRO_DEAD_ZONE = 3.5;
+    const GYRO_MAX_TILT = 18;
     const weatherModes = ["clear", "dust", "sunset"];
     const warQuotes = [
       "Courage is almost a contradiction in terms. - G. K. Chesterton",
@@ -845,6 +1080,29 @@
       lastEnemyShotAt: 0,
       floorMarks: [],
       finalName: "",
+      endingText: "General, you have won the war. The enemy is in full retreat.",
+      bonusRound: {
+        active: false,
+        endsAt: 0,
+      },
+      gyro: {
+        supported: false,
+        enabled: false,
+        gamma: 0,
+        steer: 0,
+      },
+      ending: {
+        quote: "",
+        timers: [],
+        stage: "victory",
+      },
+      chess: {
+        board: [],
+        selected: -1,
+        turn: "w",
+        status: "",
+        active: false,
+      },
     };
 
     function ensureAudio() {
@@ -866,22 +1124,22 @@
       soundtrackStarted = true;
       soundtrackNextAt = ctxAudio.currentTime + 0.08;
 
-      const bassPattern = [55, 55, 82.41, 55, 65.41, 55, 73.42, 82.41];
-      const padPattern = [220, 246.94, 196, 246.94];
-      const leadPattern = [329.63, 369.99, 329.63, 293.66, 329.63, 392, 369.99, 329.63];
-
       function scheduleLoop() {
         if (!audioCtx || audioCtx.state === "closed") return;
         const now = audioCtx.currentTime;
+        const bonus = world.bonusRound.active;
+        const bassPattern = bonus ? [65.41, 98, 73.42, 110, 82.41, 123.47, 98, 146.83] : [55, 55, 82.41, 55, 65.41, 55, 73.42, 82.41];
+        const padPattern = bonus ? [261.63, 293.66, 329.63, 392] : [220, 246.94, 196, 246.94];
+        const leadPattern = bonus ? [392, 440, 523.25, 466.16, 392, 587.33, 523.25, 466.16] : [329.63, 369.99, 329.63, 293.66, 329.63, 392, 369.99, 329.63];
         while (soundtrackNextAt < now + 1.6) {
           const start = soundtrackNextAt;
           for (let i = 0; i < 8; i += 1) {
             const step = start + i * 0.36;
-            playTone({ frequency: bassPattern[i], slideTo: bassPattern[i] * 0.94, duration: 0.26, type: "triangle", volume: 0.018, when: step });
-            playTone({ frequency: leadPattern[i], slideTo: leadPattern[i] * 1.01, duration: 0.12, type: "sine", volume: 0.008, when: step + 0.08 });
+            playTone({ frequency: bassPattern[i], slideTo: bassPattern[i] * (bonus ? 1.02 : 0.94), duration: 0.26, type: bonus ? "sawtooth" : "triangle", volume: bonus ? 0.02 : 0.018, when: step });
+            playTone({ frequency: leadPattern[i], slideTo: leadPattern[i] * (bonus ? 1.03 : 1.01), duration: 0.12, type: "sine", volume: bonus ? 0.011 : 0.008, when: step + 0.08 });
             if (i % 2 === 0) {
               const pad = padPattern[(i / 2) % padPattern.length];
-              playTone({ frequency: pad, slideTo: pad * 1.004, duration: 0.66, type: "sine", volume: 0.012, when: step });
+              playTone({ frequency: pad, slideTo: pad * (bonus ? 1.02 : 1.004), duration: 0.66, type: "sine", volume: bonus ? 0.015 : 0.012, when: step });
             }
           }
           soundtrackNextAt += 8 * 0.36;
@@ -949,11 +1207,56 @@
       rotateNotice.classList.toggle("show", show);
     }
 
+    // Gyro steering is isolated here so mobile tilt can stay optional and stable.
+    function supportsGyroSteering() {
+      return isTouchDevice && "DeviceOrientationEvent" in window;
+    }
+
+    function updateGyroToggle() {
+      world.gyro.supported = supportsGyroSteering();
+      gyroToggle.classList.toggle("show", world.gyro.supported);
+      gyroToggle.textContent = `Gyro: ${world.gyro.enabled ? "On" : "Off"}`;
+      gyroToggle.disabled = !world.gyro.supported;
+    }
+
+    function onDeviceOrientation(event) {
+      if (typeof event.gamma !== "number") return;
+      world.gyro.gamma = clamp(event.gamma, -35, 35);
+    }
+
+    async function toggleGyroSteering() {
+      startSoundtrack();
+      playUiClickSound();
+      if (!supportsGyroSteering()) return;
+      if (!world.gyro.enabled && typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+        try {
+          const result = await DeviceOrientationEvent.requestPermission();
+          if (result !== "granted") return;
+        } catch (error) {
+          return;
+        }
+      }
+      world.gyro.enabled = !world.gyro.enabled;
+      if (world.gyro.enabled) {
+        window.addEventListener("deviceorientation", onDeviceOrientation);
+      } else {
+        world.gyro.gamma = 0;
+        world.gyro.steer = 0;
+        window.removeEventListener("deviceorientation", onDeviceOrientation);
+      }
+      updateGyroToggle();
+    }
+
+    function isCompactMobileHud() {
+      return isTouchDevice && window.innerWidth <= 900;
+    }
+
     function resize() {
       updateViewportVars();
       canvas.width = window.innerWidth;
       canvas.height = window.visualViewport ? Math.round(window.visualViewport.height) : window.innerHeight;
       updateOrientationPrompt();
+      updateGyroToggle();
     }
 
     function clamp(value, min, max) {
@@ -1167,19 +1470,299 @@
       if (enemy.hp <= 0) destroyEnemy(enemy, now);
     }
 
+    function clearEndingTimers() {
+      for (const timer of world.ending.timers) {
+        window.clearTimeout(timer);
+      }
+      world.ending.timers.length = 0;
+    }
+
+    function queueEndingTimer(callback, delay) {
+      const timer = window.setTimeout(() => {
+        world.ending.timers = world.ending.timers.filter((id) => id !== timer);
+        callback();
+      }, delay);
+      world.ending.timers.push(timer);
+    }
+
+    function showEndingStage(stageName) {
+      world.ending.stage = stageName;
+      victoryStage.hidden = stageName !== "victory";
+      nameStage.hidden = stageName !== "name";
+      quoteStage.hidden = stageName !== "quote";
+      epilogueStage.hidden = stageName !== "epilogue";
+      chessStage.hidden = stageName !== "chess";
+      finalStage.hidden = stageName !== "final";
+    }
+
+    function makePiece(side, type) {
+      return { side, type };
+    }
+
+    function getPieceGlyph(piece) {
+      if (!piece) return "";
+      const glyphs = {
+        wk: "♔",
+        wq: "♕",
+        wr: "♖",
+        wp: "♙",
+        bk: "♚",
+        bq: "♛",
+        br: "♜",
+        bp: "♟",
+      };
+      return glyphs[`${piece.side}${piece.type}`] || "";
+    }
+
+    function createTinyChessBoard() {
+      return [
+        makePiece("b", "r"), makePiece("b", "q"), makePiece("b", "k"), makePiece("b", "r"),
+        makePiece("b", "p"), makePiece("b", "p"), makePiece("b", "p"), makePiece("b", "p"),
+        makePiece("w", "p"), makePiece("w", "p"), makePiece("w", "p"), makePiece("w", "p"),
+        makePiece("w", "r"), makePiece("w", "q"), makePiece("w", "k"), makePiece("w", "r"),
+      ];
+    }
+
+    function chessInside(row, col) {
+      return row >= 0 && row < 4 && col >= 0 && col < 4;
+    }
+
+    function getChessMoves(index, board) {
+      const piece = board[index];
+      if (!piece) return [];
+      const row = Math.floor(index / 4);
+      const col = index % 4;
+      const moves = [];
+      const push = (r, c, sliding = false, dr = 0, dc = 0) => {
+        let nr = r;
+        let nc = c;
+        while (chessInside(nr, nc)) {
+          const targetIndex = nr * 4 + nc;
+          const target = board[targetIndex];
+          if (!target) {
+            moves.push(targetIndex);
+          } else {
+            if (target.side !== piece.side) moves.push(targetIndex);
+            break;
+          }
+          if (!sliding) break;
+          nr += dr;
+          nc += dc;
+        }
+      };
+
+      if (piece.type === "p") {
+        const forward = piece.side === "w" ? -1 : 1;
+        const nextRow = row + forward;
+        if (chessInside(nextRow, col) && !board[nextRow * 4 + col]) {
+          moves.push(nextRow * 4 + col);
+        }
+        for (const dc of [-1, 1]) {
+          const captureCol = col + dc;
+          if (!chessInside(nextRow, captureCol)) continue;
+          const targetIndex = nextRow * 4 + captureCol;
+          const target = board[targetIndex];
+          if (target && target.side !== piece.side) moves.push(targetIndex);
+        }
+      } else if (piece.type === "r") {
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          push(row + dr, col + dc, true, dr, dc);
+        }
+      } else if (piece.type === "q") {
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          push(row + dr, col + dc, true, dr, dc);
+        }
+      } else if (piece.type === "k") {
+        for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+          push(row + dr, col + dc);
+        }
+      }
+      return moves;
+    }
+
+    function renderChessBoard() {
+      const legalTargets = world.chess.selected >= 0 ? getChessMoves(world.chess.selected, world.chess.board) : [];
+      chessBoard.innerHTML = "";
+      world.chess.board.forEach((piece, index) => {
+        const cell = document.createElement("button");
+        cell.className = `chess-cell ${(Math.floor(index / 4) + index % 4) % 2 === 0 ? "chess-light" : "chess-dark"}`;
+        if (world.chess.selected === index) cell.classList.add("selected");
+        if (legalTargets.includes(index)) cell.classList.add("target");
+        cell.textContent = getPieceGlyph(piece);
+        cell.setAttribute("aria-label", piece ? `${piece.side === "w" ? "White" : "Black"} ${piece.type}` : "Empty square");
+        cell.addEventListener("click", () => handleChessClick(index));
+        chessBoard.appendChild(cell);
+      });
+      chessStatus.textContent = world.chess.status;
+    }
+
+    function finishChess(message) {
+      world.chess.active = false;
+      world.chess.status = message;
+      renderChessBoard();
+      queueEndingTimer(() => {
+        showEndingStage("final");
+      }, 1200);
+    }
+
+    function moveChessPiece(from, to) {
+      const board = world.chess.board.slice();
+      const moving = board[from];
+      const target = board[to];
+      board[to] = moving;
+      board[from] = null;
+      world.chess.board = board;
+      world.chess.selected = -1;
+      if (target && target.type === "k") {
+        finishChess(moving.side === "w" ? "Checkmate enough. You win." : "The machine takes the king, gently.");
+        return true;
+      }
+      return false;
+    }
+
+    function getAllChessMoves(side) {
+      const moves = [];
+      world.chess.board.forEach((piece, index) => {
+        if (!piece || piece.side !== side) return;
+        for (const to of getChessMoves(index, world.chess.board)) {
+          moves.push({ from: index, to, target: world.chess.board[to] });
+        }
+      });
+      return moves;
+    }
+
+    function runChessAiTurn() {
+      if (!world.chess.active || world.chess.turn !== "b") return;
+      const moves = getAllChessMoves("b");
+      if (moves.length === 0) {
+        finishChess("The machine shrugs. You win by surviving.");
+        return;
+      }
+      const captures = moves.filter((move) => move.target);
+      const kingCapture = captures.find((move) => move.target.type === "k");
+      const choicePool = kingCapture ? [kingCapture] : captures.length ? captures : moves;
+      const move = choicePool[(Math.random() * choicePool.length) | 0];
+      const ended = moveChessPiece(move.from, move.to);
+      if (!ended) {
+        world.chess.turn = "w";
+        world.chess.status = "Your move. Capture the black king.";
+        renderChessBoard();
+      }
+    }
+
+    function handleChessClick(index) {
+      if (!world.chess.active || world.chess.turn !== "w") return;
+      const piece = world.chess.board[index];
+      if (world.chess.selected === index) {
+        world.chess.selected = -1;
+        renderChessBoard();
+        return;
+      }
+      if (piece && piece.side === "w") {
+        world.chess.selected = index;
+        renderChessBoard();
+        return;
+      }
+      if (world.chess.selected >= 0) {
+        const legalMoves = getChessMoves(world.chess.selected, world.chess.board);
+        if (!legalMoves.includes(index)) return;
+        const ended = moveChessPiece(world.chess.selected, index);
+        renderChessBoard();
+        if (!ended) {
+          world.chess.turn = "b";
+          world.chess.status = "Machine thinking very slowly...";
+          renderChessBoard();
+          queueEndingTimer(runChessAiTurn, 700);
+        }
+      }
+    }
+
+    // Chess easter egg stays intentionally tiny and beginner-friendly.
+    function startTinyChess() {
+      clearEndingTimers();
+      showEndingStage("chess");
+      world.chess.board = createTinyChessBoard();
+      world.chess.selected = -1;
+      world.chess.turn = "w";
+      world.chess.status = "Your move. Capture the black king.";
+      world.chess.active = true;
+      renderChessBoard();
+    }
+
+    // Quote display and final epilogue are kept separate from gameplay state.
+    function beginEpilogue() {
+      clearEndingTimers();
+      showEndingStage("epilogue");
+      epilogueText.textContent = "";
+      startChessButton.hidden = true;
+      queueEndingTimer(() => {
+        epilogueText.textContent = "Strange game.\nThe only winning move is not to play.";
+      }, 700);
+      queueEndingTimer(() => {
+        epilogueText.textContent = "Strange game.\nThe only winning move is not to play.\n\nHow about a nice game of chess?";
+      }, 2800);
+      queueEndingTimer(() => {
+        startChessButton.hidden = false;
+      }, 4300);
+    }
+
+    function showQuoteStage() {
+      clearEndingTimers();
+      const name = playerNameInput.value.trim() || "General";
+      const quote = warQuotes[(Math.random() * warQuotes.length) | 0];
+      world.finalName = name;
+      world.ending.quote = `${name}, ${quote}`;
+      quoteBox.textContent = world.ending.quote;
+      showEndingStage("quote");
+    }
+
+    // Victory sequence is staged so the campaign can end on a calmer tone.
     function openEnding() {
+      clearEndingTimers();
       world.victory = true;
+      document.getElementById("endingText").textContent = world.endingText;
+      endingOverlay.classList.add("calm");
       endingOverlay.classList.add("open");
       endingOverlay.setAttribute("aria-hidden", "false");
       playerNameInput.value = "";
-      quoteBox.hidden = true;
       quoteBox.textContent = "";
+      epilogueText.textContent = "";
+      startChessButton.hidden = true;
+      showEndingStage("victory");
+      queueEndingTimer(() => {
+        showEndingStage("name");
+        playerNameInput.focus();
+      }, 1700);
+    }
+
+    // The psychedelic bonus round is a short victory lap before the final ending sequence.
+    function startBonusRound(now) {
+      world.mode = "bonus";
+      world.bonusRound.active = true;
+      world.bonusRound.endsAt = now + BONUS_ROUND_MS;
+      world.enemies = [];
+      world.projectiles = [];
+      world.effects = [];
+      world.lastSpawnAt = 0;
+      world.lastEnemyShotAt = 0;
+      world.nextWeatherAt = now + 30000;
+      world.weather = "clear";
+      showMessage("Bonus Round", now, 3000);
+      for (let i = 0; i < 4; i += 1) {
+        spawnEnemy(now, i % 2 === 0 ? "jeep" : "tank");
+      }
+    }
+
+    // Final ending sequence is kept separate so the campaign end stays easy to follow.
+    function finishCampaign(now) {
+      world.endingText = "General, you have won the war. The enemy is in full retreat.";
+      showMessage("War Won", now, 3200);
+      openEnding();
     }
 
     function completeBoss(now) {
       if (currentPhase().boss.final) {
-        showMessage("War Won", now, 3200);
-        openEnding();
+        startBonusRound(now);
         return;
       }
       world.mode = "arena";
@@ -1189,6 +1772,7 @@
 
     function resetGame() {
       const now = performance.now();
+      clearEndingTimers();
       world.player.x = 0;
       world.player.y = 0;
       world.player.angle = 0;
@@ -1227,12 +1811,26 @@
       world.messageText = "";
       world.messageUntil = 0;
       world.roundStartAt = now;
+      world.endingText = "General, you have won the war. The enemy is in full retreat.";
+      world.bonusRound.active = false;
+      world.bonusRound.endsAt = 0;
+      world.gyro.gamma = 0;
+      world.gyro.steer = 0;
+      world.finalName = "";
+      world.ending.quote = "";
+      world.ending.stage = "victory";
+      world.chess.board = [];
+      world.chess.selected = -1;
+      world.chess.turn = "w";
+      world.chess.status = "";
+      world.chess.active = false;
 
       if (world.floorMarks.length === 0) createFloorMarks();
       createHazards();
       for (let i = 0; i < 3; i += 1) spawnEnemy(now, "jeep");
 
       pauseOverlay.classList.remove("open");
+      endingOverlay.classList.remove("calm");
       endingOverlay.classList.remove("open");
       helpPanel.classList.remove("open");
       touchState.moveX = 0;
@@ -1244,7 +1842,8 @@
     }
 
     function updateHud(now) {
-      healthEl.textContent = `${world.player.health} / ${PLAYER_MAX_HEALTH}`;
+      const compactHud = isCompactMobileHud();
+      healthEl.textContent = compactHud ? `HP ${world.player.health}/${PLAYER_MAX_HEALTH}` : `${world.player.health} / ${PLAYER_MAX_HEALTH}`;
       const blinking = now < world.player.invincibleUntil && Math.floor(now / 120) % 2 === 0;
       const healing = now - world.player.lastHealAt < 520;
       healthEl.className = `value ${world.player.health <= 2 ? "danger" : ""} ${blinking ? "blink" : ""} ${healing ? "good" : ""}`;
@@ -1268,17 +1867,28 @@
         reloadEl.className = "value";
       }
 
-      phaseLabelEl.textContent = world.mode === "boss" ? currentPhase().boss.name : currentPhase().arenaName;
+      const phaseText = world.mode === "boss"
+        ? currentPhase().boss.name
+        : world.mode === "bonus"
+          ? "Bonus Round"
+          : currentPhase().arenaName;
+      phaseLabelEl.textContent = compactHud ? `P${world.phaseIndex + 1}` : phaseText;
       challengeTextEl.textContent = world.mode === "boss"
         ? currentPhase().boss.final
           ? "Heavy boss with support"
           : currentPhase().boss.count === 2
             ? "Twin bosses"
             : "Boss battle"
+        : world.mode === "bonus"
+          ? "Neon cleanup"
         : currentPhase().challenge;
 
       const weatherLabel = world.weather === "dust" ? "Dust" : world.weather === "sunset" ? "Sunset" : "Clear";
-      scoreWeatherEl.textContent = `${world.score} • ${weatherLabel}`;
+      scoreWeatherEl.textContent = compactHud
+        ? `${world.score} • ${phaseText}`
+        : world.mode === "bonus"
+          ? `${world.score} • Psychedelic`
+          : `${world.score} • ${weatherLabel}`;
     }
 
     function updateRadarContacts(now) {
@@ -1475,12 +2085,22 @@
       let turnInput = 0;
       if (isTouchDevice) {
         moveInput = clamp(-touchState.moveY, -1, 1);
-        turnInput = clamp(touchState.moveX, -1, 1);
+        turnInput = world.gyro.enabled ? world.gyro.steer : clamp(touchState.moveX, -1, 1);
       } else {
         if (keys.KeyW || keys.ArrowUp) moveInput += 1;
         if (keys.KeyS || keys.ArrowDown) moveInput -= 1;
         if (keys.KeyA) turnInput -= 1;
         if (keys.KeyD) turnInput += 1;
+      }
+
+      if (world.gyro.enabled) {
+        const absGamma = Math.abs(world.gyro.gamma);
+        const normalized = absGamma <= GYRO_DEAD_ZONE
+          ? 0
+          : clamp((absGamma - GYRO_DEAD_ZONE) / (GYRO_MAX_TILT - GYRO_DEAD_ZONE), 0, 1) * Math.sign(world.gyro.gamma);
+        world.gyro.steer += (normalized - world.gyro.steer) * Math.min(1, dt * 4.5);
+      } else {
+        world.gyro.steer += (0 - world.gyro.steer) * Math.min(1, dt * 5);
       }
 
       const turnSpeed = 1.22;
@@ -1542,6 +2162,18 @@
       }
     }
 
+    function updateBonusRound(now) {
+      const aliveRegular = world.enemies.filter((enemy) => enemy.alive).length;
+      if (aliveRegular < 5 && now - world.lastSpawnAt > 1800) {
+        spawnEnemy(now, Math.random() < 0.55 ? "jeep" : "tank");
+        world.lastSpawnAt = now;
+      }
+      if (now >= world.bonusRound.endsAt) {
+        world.bonusRound.active = false;
+        finishCampaign(now);
+      }
+    }
+
     function updateBossSpawns(now) {
       const boss = currentPhase().boss;
       if (!boss.final) return;
@@ -1585,7 +2217,9 @@
 
       world.enemies = world.enemies.filter((enemy) => enemy.alive);
 
-      if (world.mode === "boss") {
+      if (world.mode === "bonus") {
+        updateBonusRound(now);
+      } else if (world.mode === "boss") {
         if (!world.enemies.some((enemy) => enemy.boss && enemy.alive)) {
           completeBoss(now);
         } else {
@@ -1674,7 +2308,10 @@
     function drawSky() {
       let top = "#89d6f7";
       let bottom = "#f5d79a";
-      if (world.weather === "dust") {
+      if (world.bonusRound.active) {
+        top = "#241253";
+        bottom = "#35f1dd";
+      } else if (world.weather === "dust") {
         top = "#bca482";
         bottom = "#d0ab6f";
       } else if (world.weather === "sunset") {
@@ -1741,9 +2378,15 @@
     function drawGround() {
       const horizon = canvas.height * 0.54;
       const groundGradient = ctx.createLinearGradient(0, horizon, 0, canvas.height);
-      groundGradient.addColorStop(0, world.weather === "sunset" ? "#c59258" : "#deb776");
-      groundGradient.addColorStop(0.52, world.weather === "sunset" ? "#b38149" : "#d0a25d");
-      groundGradient.addColorStop(1, world.weather === "sunset" ? "#94663a" : "#bb8743");
+      if (world.bonusRound.active) {
+        groundGradient.addColorStop(0, "#6a3ad3");
+        groundGradient.addColorStop(0.52, "#ff7f50");
+        groundGradient.addColorStop(1, "#1ad6a8");
+      } else {
+        groundGradient.addColorStop(0, world.weather === "sunset" ? "#c59258" : "#deb776");
+        groundGradient.addColorStop(0.52, world.weather === "sunset" ? "#b38149" : "#d0a25d");
+        groundGradient.addColorStop(1, world.weather === "sunset" ? "#94663a" : "#bb8743");
+      }
       ctx.fillStyle = groundGradient;
       ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
 
@@ -1754,7 +2397,7 @@
         ctx.fill();
       }
 
-      ctx.fillStyle = world.weather === "sunset" ? "#ad7543" : "#c9984d";
+      ctx.fillStyle = world.bonusRound.active ? "#ff5eb1" : world.weather === "sunset" ? "#ad7543" : "#c9984d";
       for (let i = 0; i < 5; i += 1) {
         const width = canvas.width * (0.26 + i * 0.12);
         const x = i * canvas.width * 0.22 - 120;
@@ -1773,7 +2416,7 @@
       drawHazards();
 
       // Terrain readability comes from broad color variation plus dry channels and scattered rocks.
-      const rockColor = world.weather === "sunset" ? "#7f5632" : "#8f6a46";
+      const rockColor = world.bonusRound.active ? "#1e2357" : world.weather === "sunset" ? "#7f5632" : "#8f6a46";
       for (const mark of world.floorMarks) {
         const p = projectToScreen(mark.x, mark.y);
         if (!p || p.distance < 140 || p.distance > 1450) continue;
@@ -1817,10 +2460,17 @@
         const danger = enemy.state === "advance" && enemy.fireAt - now <= DANGER_CUE_MS;
         const dangerBlink = danger && Math.floor(now / 140) % 2 === 0;
         const hitFlash = now - enemy.hitFlash < 180;
+        const bodyColor = world.bonusRound.active
+          ? enemy.boss
+            ? "#ff58d2"
+            : enemy.kind === "tank"
+              ? "#4df0ff"
+              : "#ffe867"
+          : enemy.color;
 
         ctx.save();
         ctx.translate(p.x, baseY);
-        ctx.fillStyle = enemy.state === "fire" ? "#ff835f" : hitFlash ? "#fff3ad" : dangerBlink ? "#ffd08a" : enemy.color;
+        ctx.fillStyle = enemy.state === "fire" ? "#ff835f" : hitFlash ? "#fff3ad" : dangerBlink ? "#ffd08a" : bodyColor;
         ctx.fillRect(-bodyW / 2, -bodyH, bodyW, bodyH);
         ctx.fillStyle = enemy.turretColor;
         ctx.fillRect(-turretW / 2, -bodyH - turretH + 4 * p.scale, turretW, turretH);
@@ -1836,6 +2486,11 @@
           ctx.strokeStyle = "rgba(255,231,169,0.95)";
           ctx.lineWidth = Math.max(2, 5 * p.scale);
           ctx.strokeRect(-bodyW * 0.62, -bodyH - turretH * 0.4, bodyW * 1.24, bodyH * 1.04);
+        }
+        if (world.bonusRound.active) {
+          ctx.strokeStyle = "rgba(255,255,255,0.55)";
+          ctx.lineWidth = Math.max(1, 3 * p.scale);
+          ctx.strokeRect(-bodyW * 0.54, -bodyH - 2 * p.scale, bodyW * 1.08, bodyH * 1.02);
         }
         if (enemy.boss || enemy.kind === "tank") {
           const fraction = enemy.hp / enemy.maxHp;
@@ -1890,7 +2545,16 @@
           if (!p1) continue;
           const originX = canvas.width * 0.5 + (world.player.turretAngle / TURRET_LIMIT) * 72;
           const originY = canvas.height - 220 + world.player.recoil * 18;
-          ctx.strokeStyle = shot.mega ? "rgba(255,180,92,0.95)" : "rgba(255,241,180,0.95)";
+          const rainbow = [
+            "rgba(255,90,122,0.95)",
+            "rgba(255,190,92,0.95)",
+            "rgba(148,240,141,0.95)",
+            "rgba(110,214,255,0.95)",
+            "rgba(196,126,255,0.95)",
+          ];
+          ctx.strokeStyle = world.bonusRound.active
+            ? rainbow[Math.floor(((now - shot.bornAt) / 48) % rainbow.length)]
+            : shot.mega ? "rgba(255,180,92,0.95)" : "rgba(255,241,180,0.95)";
           ctx.lineWidth = shot.mega ? 7 : 4;
           ctx.lineCap = "round";
           ctx.beginPath();
@@ -2042,6 +2706,10 @@
         ctx.fillStyle = amount >= 1 ? "#ffcf9b" : "#fff1cb";
         ctx.fillText(amount >= 1 ? "Mega Blast Ready" : "Charging", x, y + 86);
       }
+      if (isTouchDevice && world.gyro.enabled) {
+        ctx.fillStyle = "rgba(255,241,203,0.82)";
+        ctx.fillText("Gyro Steering On", x, y - 52);
+      }
     }
 
     function drawWeatherOverlay(now) {
@@ -2049,7 +2717,20 @@
         ctx.fillStyle = "rgba(255,230,190,0.26)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
-      if (world.weather === "dust") {
+      if (world.bonusRound.active) {
+        const glow = 0.08 + Math.sin(now * 0.008) * 0.05;
+        ctx.fillStyle = `rgba(60, 14, 122, ${0.16 + glow})`;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "rgba(255,255,255,0.08)";
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 16; i += 1) {
+          const y = (i * 54 + now * 0.08) % (canvas.height + 50) - 25;
+          ctx.beginPath();
+          ctx.moveTo(-20, y);
+          ctx.lineTo(canvas.width + 20, y - 14);
+          ctx.stroke();
+        }
+      } else if (world.weather === "dust") {
         ctx.fillStyle = "rgba(211,169,112,0.32)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.strokeStyle = "rgba(249,224,164,0.12)";
@@ -2174,8 +2855,8 @@
 
     function updateJoystick(clientX, clientY) {
       const rect = joystickZone.getBoundingClientRect();
-      const cx = rect.left + 70;
-      const cy = rect.top + 110;
+      const cx = rect.left + rect.width * 0.45;
+      const cy = rect.top + rect.height * 0.72;
       const dx = clientX - cx;
       const dy = clientY - cy;
       const len = Math.hypot(dx, dy) || 1;
@@ -2205,6 +2886,22 @@
     document.addEventListener("gesturechange", (event) => {
       event.preventDefault();
     }, { passive: false });
+    // Prevent double-tap zoom on the game surface and touch controls.
+    let lastTapAt = 0;
+    document.addEventListener("touchend", (event) => {
+      if (event.target.closest("input, textarea")) return;
+      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #pauseOverlay, #helpPanel, #endingOverlay")) return;
+      const now = performance.now();
+      if (now - lastTapAt < 320) {
+        event.preventDefault();
+      }
+      lastTapAt = now;
+    }, { passive: false });
+    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
+      target.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+      });
+    }
 
     window.addEventListener("keydown", (event) => {
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) {
@@ -2244,6 +2941,9 @@
     helpButton.addEventListener("click", () => setHelpOpen(!helpPanel.classList.contains("open")));
     closeHelp.addEventListener("click", () => setHelpOpen(false));
     pauseButton.addEventListener("click", () => togglePause());
+    gyroToggle.addEventListener("click", () => {
+      toggleGyroSteering();
+    });
     resumeButton.addEventListener("click", () => togglePause(false));
     touchPause.addEventListener("click", () => togglePause());
 
@@ -2285,14 +2985,30 @@
     joystickZone.addEventListener("pointercancel", endJoystick);
 
     showQuoteButton.addEventListener("click", () => {
+      startSoundtrack();
       playUiClickSound();
-      const name = playerNameInput.value.trim() || "General";
-      const quote = warQuotes[(Math.random() * warQuotes.length) | 0];
-      quoteBox.hidden = false;
-      quoteBox.textContent = `${name}, ${quote}`;
+      showQuoteStage();
+    });
+    continueEpilogueButton.addEventListener("click", () => {
+      beginEpilogue();
+    });
+    startChessButton.addEventListener("click", () => {
+      startTinyChess();
+    });
+    exitChessButton.addEventListener("click", () => {
+      finishChess("A graceful draw. Good enough for tonight.");
+    });
+    playAgainButton.addEventListener("click", () => {
+      resetGame();
+    });
+    playerNameInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        showQuoteStage();
+      }
     });
 
-    for (const clickable of [helpButton, closeHelp, pauseButton, resumeButton, touchPause, touchReload]) {
+    for (const clickable of [helpButton, closeHelp, pauseButton, resumeButton, touchPause, touchReload, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
       clickable.addEventListener("click", () => {
         startSoundtrack();
         playUiClickSound();
@@ -2300,6 +3016,7 @@
     }
 
     resize();
+    updateGyroToggle();
     createFloorMarks();
     createHazards();
     resetGame();
