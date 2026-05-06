@@ -2343,7 +2343,8 @@ The enemy is in full retreat.</p>
 
       if (world.gyro.enabled) {
         const steerTarget = getGyroAxisValue(world.gyro.gamma, world.gyro.neutralGamma, GYRO_DEAD_ZONE, GYRO_MAX_TILT);
-        const throttleTarget = getGyroAxisValue(world.gyro.neutralBeta - world.gyro.beta, 0, GYRO_MOVE_DEAD_ZONE, GYRO_MAX_PITCH);
+        // Forward tilt should drive forward, while tilting back should slow or reverse.
+        const throttleTarget = getGyroAxisValue(world.gyro.beta, world.gyro.neutralBeta, GYRO_MOVE_DEAD_ZONE, GYRO_MAX_PITCH);
         world.gyro.steer += (steerTarget - world.gyro.steer) * Math.min(1, dt * 4.5);
         world.gyro.throttle += (throttleTarget - world.gyro.throttle) * Math.min(1, dt * 3.8);
         turnInput = clamp(world.gyro.steer + turnInput * 0.2, -1, 1);
