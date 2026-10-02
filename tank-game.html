@@ -497,29 +497,6 @@
       display: block;
     }
 
-    #gyroPermissionButton {
-      position: fixed;
-      left: 50%;
-      top: calc(max(18px, env(safe-area-inset-top)) + 18px);
-      transform: translateX(-50%);
-      min-width: 180px;
-      height: 38px;
-      padding: 0 14px;
-      border: 2px solid rgba(176, 112, 43, 0.28);
-      border-radius: 999px;
-      background: rgba(255, 245, 210, 0.96);
-      color: #5a3818;
-      box-shadow: 0 10px 22px rgba(104, 66, 16, 0.18);
-      font: 700 13px "Trebuchet MS", Verdana, sans-serif;
-      z-index: 7;
-      display: none;
-      touch-action: manipulation;
-    }
-
-    #gyroPermissionButton.show {
-      display: block;
-    }
-
     #gyroHint {
       position: fixed;
       left: max(18px, env(safe-area-inset-left));
@@ -724,13 +701,6 @@
         font-size: 9px;
       }
 
-      #gyroPermissionButton {
-        min-width: 156px;
-        height: 32px;
-        font-size: 11px;
-        top: calc(max(10px, env(safe-area-inset-top)) + 10px);
-      }
-
       #gyroHint {
         left: max(10px, env(safe-area-inset-left));
         top: calc(max(10px, env(safe-area-inset-top)) + 100px);
@@ -809,13 +779,41 @@
         padding: 8px 12px;
       }
     }
+
+    /* Small finish pass: keep the warm arcade palette and simple silhouettes. */
+    #message { top: calc(max(18px, env(safe-area-inset-top)) + 52px); }
+    .panel { box-shadow: inset 0 1px 0 rgba(255,255,255,.65), 0 8px 20px rgba(104,66,16,.17); }
+    button { cursor: pointer; transition: background-color 140ms, box-shadow 140ms, filter 140ms; }
+    button:active { filter: brightness(.92); }
+    button:focus-visible { outline: 3px solid #4a8295; outline-offset: 3px; }
+    button:disabled { cursor: default; opacity: .6; }
+    .overlay-card { animation: appear 160ms ease-out; max-height: 86vh; overflow-y: auto; }
+    #helpPanel { max-height: 85vh; overflow-y: auto; }
+    #helpPanel, .overlay-card { touch-action: pan-y; }
+    #joystickBase { box-shadow: inset 0 2px 12px rgba(72,45,21,.16); }
+    #joystickStick { box-shadow: 0 3px 8px rgba(72,45,21,.24), inset 0 1px 0 rgba(255,255,255,.48); pointer-events: none; }
+    #game { outline: none; }
+    @keyframes appear { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+    @media (pointer: coarse), (max-width: 900px) {
+      #message { top: calc(max(12px, env(safe-area-inset-top)) + 42px); }
+    }
+    @media (pointer: coarse) and (orientation: landscape) {
+      #radarWrap { bottom: calc(max(18px, env(safe-area-inset-bottom)) + 130px); }
+    }
+    @media (pointer: coarse) and (orientation: portrait) {
+      #rotateNotice { top: calc(max(10px, env(safe-area-inset-top)) + 116px); font-size: 11px; padding: 6px 10px; }
+    }
+    body.motion-status #rotateNotice { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      button { transition: none; }
+      .overlay-card { animation: none; }
+    }
   </style>
 </head>
 <body>
-  <canvas id="game"></canvas>
+  <canvas id="game" aria-label="Desert Tank Patrol battlefield" tabindex="0"></canvas>
   <div id="rotateNotice">Rotate your device for best play</div>
-  <button id="gyroPermissionButton" aria-label="Request gyroscope permission">Enable Gyro Steering</button>
-  <div id="gyroHint">Hold device comfortably, then tap calibrate.</div>
+  <div id="gyroHint" role="status" aria-live="polite">Motion is optional. Keyboard and joystick always work.</div>
 
   <div class="hud">
     <div class="panel" id="status">
@@ -847,8 +845,8 @@
 
   <button id="helpButton" class="ui-button" aria-label="Show controls">?</button>
   <button id="pauseButton" class="ui-button" aria-label="Pause game">P</button>
-  <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Gyro Steering: Off</button>
-  <button id="gyroCalibrate" aria-label="Calibrate gyroscopic steering">Calibrate Steering</button>
+  <button id="gyroToggle" aria-label="Toggle gyroscopic steering">Motion: Off</button>
+  <button id="gyroCalibrate" aria-label="Calibrate gyroscopic steering">Calibrate</button>
 
   <div id="helpPanel" aria-hidden="true">
     <button id="closeHelp" aria-label="Close controls">x</button>
@@ -861,6 +859,10 @@
       <li>Hold Spacebar: charge mega blast</li>
       <li>R: reload</li>
       <li>P: pause</li>
+      <li>Mouse click / hold: fire / charge</li>
+      <li>Touch: left joystick to drive; tap / hold Fire</li>
+      <li>Optional Motion: tap to allow access, hold steady, then tilt to drive. Calibrate recenters; the joystick overrides motion.</li>
+      <li>Motion requires HTTPS and sensor support. If unavailable, use normal controls.</li>
     </ul>
   </div>
 
@@ -934,6 +936,8 @@ The enemy is in full retreat.</p>
     </div>
   </div>
 
+  <script src="theaters.js"></script>
+  <script src="motion-controls.js"></script>
   <script>
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -950,7 +954,6 @@ The enemy is in full retreat.</p>
     const pauseButton = document.getElementById("pauseButton");
     const gyroToggle = document.getElementById("gyroToggle");
     const gyroCalibrate = document.getElementById("gyroCalibrate");
-    const gyroPermissionButton = document.getElementById("gyroPermissionButton");
     const gyroHint = document.getElementById("gyroHint");
     const helpPanel = document.getElementById("helpPanel");
     const closeHelp = document.getElementById("closeHelp");
@@ -994,17 +997,11 @@ The enemy is in full retreat.</p>
     const DANGER_CUE_MS = 1000;
     const TURRET_LIMIT = 0.42;
     const PLAYER_SHOT_DELAY_MS = 180;
-    const PHASE_KILL_STEP = 15;
     const MOBILE_AIM_SPEED = 0.8;
-    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 900;
+    const isTouchDevice = window.matchMedia("(pointer: coarse)").matches || navigator.maxTouchPoints > 0;
     const BONUS_ROUND_MS = 75000;
     const PICKUP_SPAWN_MS = 13500;
     const TEMP_BONUS_MS = 12000;
-    const GYRO_DEAD_ZONE = 3.5;
-    const GYRO_MAX_TILT = 18;
-    const GYRO_MOVE_DEAD_ZONE = 4.5;
-    const GYRO_MAX_PITCH = 22;
-    const weatherModes = ["clear", "dust", "sunset"];
     const warQuotes = [
       "Courage is almost a contradiction in terms. - G. K. Chesterton",
       "In war, resolve. In defeat, defiance. In victory, magnanimity. - Winston Churchill",
@@ -1045,88 +1042,8 @@ The enemy is in full retreat.</p>
       }
     };
 
-    // Phase progression and boss flow are defined here so the arcade campaign stays readable.
-    const PHASES = [
-      {
-        arenaName: "Opening Skirmish",
-        challenge: "Fast Jeeps",
-        regularKillTarget: 15,
-        hazard: null,
-        spawnWeights: { jeep: 1 },
-        maxEnemies: 3,
-        boss: {
-          name: "Boss 1",
-          count: 1,
-          hp: 6,
-          megaDamage: 4,
-          speed: 19,
-          size: 1.7,
-          color: "#b74c39",
-          turret: "#7d2f23",
-          fire: [3800, 5200]
-        }
-      },
-      {
-        arenaName: "Armor Push",
-        challenge: "Tanks Added",
-        regularKillTarget: 30,
-        hazard: "ridges",
-        spawnWeights: { jeep: 2, tank: 2 },
-        maxEnemies: 4,
-        boss: {
-          name: "Boss 2",
-          count: 1,
-          hp: 10,
-          megaDamage: 4,
-          speed: 16,
-          size: 1.95,
-          color: "#9f4738",
-          turret: "#6a271f",
-          fire: [4200, 5800]
-        }
-      },
-      {
-        arenaName: "Fog Front",
-        challenge: "Fog Zone",
-        regularKillTarget: 45,
-        hazard: "fog",
-        spawnWeights: { jeep: 2, tank: 3 },
-        maxEnemies: 3,
-        boss: {
-          name: "Boss 3",
-          count: 2,
-          hp: 8,
-          megaDamage: 3,
-          speed: 17,
-          size: 1.8,
-          color: "#b4583f",
-          turret: "#6d2f24",
-          fire: [4000, 5600]
-        }
-      },
-      {
-        arenaName: "Wet Crossing",
-        challenge: "Water Hazards",
-        regularKillTarget: 60,
-        hazard: "water",
-        spawnWeights: { jeep: 3, tank: 3 },
-        maxEnemies: 4,
-        boss: {
-          name: "Final Boss",
-          count: 1,
-          hp: 16,
-          megaDamage: 5,
-          speed: 13,
-          size: 2.35,
-          color: "#6f2020",
-          turret: "#3d1010",
-          fire: [3900, 5300],
-          support: { jeep: 1, tank: 1 },
-          supportMax: 2,
-          final: true
-        }
-      }
-    ];
+    // One engine reads reusable theater and encounter data.
+    const PHASES = PatrolLevels.createCampaign();
 
     let audioCtx = null;
     let soundtrackStarted = false;
@@ -1139,6 +1056,7 @@ The enemy is in full retreat.</p>
       moveY: 0,
       joystickId: null,
       firing: false,
+      fireId: null,
       chargingStarted: 0,
     };
 
@@ -1157,6 +1075,7 @@ The enemy is in full retreat.</p>
         chargeStart: 0,
         chargeAmount: 0,
         recoil: 0,
+        lastFireAt: 0,
         invincibleUntil: 0,
         lastHitAt: 0,
         lastRegenAt: 0,
@@ -1171,6 +1090,7 @@ The enemy is in full retreat.</p>
         ridges: [],
         water: [],
         riverbeds: [],
+        obstacles: [],
       },
       weather: "clear",
       nextWeatherAt: 0,
@@ -1178,6 +1098,7 @@ The enemy is in full retreat.</p>
       radarAlert: false,
       lastRadarUpdate: 0,
       paused: false,
+      pausedAt: 0,
       gameOver: false,
       victory: false,
       mode: "arena",
@@ -1198,17 +1119,6 @@ The enemy is in full retreat.</p>
         endsAt: 0,
       },
       activeBonus: null,
-      gyro: {
-        supported: false,
-        enabled: false,
-        permissionReady: false,
-        gamma: 0,
-        beta: 0,
-        neutralGamma: 0,
-        neutralBeta: 0,
-        steer: 0,
-        throttle: 0,
-      },
       ending: {
         quote: "",
         timers: [],
@@ -1325,95 +1235,33 @@ The enemy is in full retreat.</p>
       rotateNotice.classList.toggle("show", show);
     }
 
-    // Gyro steering is isolated here so mobile tilt can stay optional and stable.
-    function supportsGyroSteering() {
-      return isTouchDevice && "DeviceOrientationEvent" in window;
-    }
-
-    function needsGyroPermissionPrompt() {
-      return supportsGyroSteering()
-        && typeof DeviceOrientationEvent !== "undefined"
-        && typeof DeviceOrientationEvent.requestPermission === "function"
-        && !world.gyro.permissionReady
-        && !world.gyro.enabled;
-    }
+    // The sensor adapter is optional even if its script fails to load.
+    const motionControls = typeof createMotionControls === "function"
+      ? createMotionControls({ onChange: updateGyroToggle })
+      : { supported: false, enabled: false, pending: false, calibrated: false,
+          status: "Motion unavailable — keyboard and joystick ready.",
+          enable: async () => false, disable() {}, reset() {}, recenter() {},
+          read: () => ({ move: 0, turn: 0 }) };
 
     function updateGyroToggle() {
-      world.gyro.supported = supportsGyroSteering();
-      gyroToggle.classList.toggle("show", world.gyro.supported);
-      gyroCalibrate.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
-      gyroPermissionButton.classList.toggle("show", needsGyroPermissionPrompt());
-      gyroHint.classList.toggle("show", world.gyro.supported && world.gyro.enabled);
-      gyroToggle.textContent = `Gyro Steering: ${world.gyro.enabled ? "On" : "Off"}`;
-      gyroToggle.disabled = !world.gyro.supported;
-      gyroCalibrate.disabled = !world.gyro.supported || !world.gyro.enabled;
+      gyroToggle.classList.toggle("show", isTouchDevice);
+      gyroCalibrate.classList.toggle("show", isTouchDevice && motionControls.enabled);
+      const showStatus = isTouchDevice && (motionControls.enabled || motionControls.pending || motionControls.status !== "Motion off — keyboard and joystick ready.");
+      gyroHint.classList.toggle("show", showStatus);
+      document.body.classList.toggle("motion-status", showStatus);
+      gyroToggle.textContent = motionControls.pending ? "Cancel Motion" : `Motion: ${motionControls.enabled ? "On" : "Off"}`;
+      gyroToggle.setAttribute("aria-pressed", String(motionControls.enabled));
+      gyroToggle.disabled = !motionControls.supported;
+      gyroToggle.title = motionControls.status;
+      gyroHint.textContent = motionControls.status;
+      gyroCalibrate.disabled = !motionControls.calibrated;
     }
 
-    function onDeviceOrientation(event) {
-      if (typeof event.gamma !== "number") return;
-      world.gyro.gamma = clamp(event.gamma, -35, 35);
-      if (typeof event.beta === "number") {
-        world.gyro.beta = clamp(event.beta, -35, 50);
-      }
-    }
-
-    function calibrateGyroSteering() {
-      world.gyro.neutralGamma = world.gyro.gamma;
-      world.gyro.neutralBeta = world.gyro.beta;
-    }
-
-    function getGyroAxisValue(value, neutral, deadZone, maxValue) {
-      const offset = value - neutral;
-      const absOffset = Math.abs(offset);
-      if (absOffset <= deadZone) return 0;
-      return clamp((absOffset - deadZone) / (maxValue - deadZone), 0, 1) * Math.sign(offset);
-    }
-
-    function setGyroEnabled(enabled) {
-      world.gyro.enabled = enabled;
-      if (enabled) {
-        calibrateGyroSteering();
-        window.addEventListener("deviceorientation", onDeviceOrientation);
-      } else {
-        world.gyro.gamma = 0;
-        world.gyro.beta = 0;
-        world.gyro.steer = 0;
-        world.gyro.throttle = 0;
-        window.removeEventListener("deviceorientation", onDeviceOrientation);
-      }
-      updateGyroToggle();
-    }
-
-    async function requestGyroPermission(enableAfterGrant = true) {
-      if (!supportsGyroSteering()) return false;
-      if (typeof DeviceOrientationEvent === "undefined" || typeof DeviceOrientationEvent.requestPermission !== "function") {
-        world.gyro.permissionReady = true;
-        if (enableAfterGrant) setGyroEnabled(true);
-        updateGyroToggle();
-        return true;
-      }
-      try {
-        const result = await DeviceOrientationEvent.requestPermission();
-        if (result !== "granted") return false;
-        world.gyro.permissionReady = true;
-        if (enableAfterGrant) setGyroEnabled(true);
-        updateGyroToggle();
-        return true;
-      } catch (error) {
-        return false;
-      }
-    }
-
-    async function toggleGyroSteering() {
+    function toggleGyroSteering() {
+      if (motionControls.enabled || motionControls.pending) motionControls.disable();
+      else motionControls.enable();
       startSoundtrack();
       playUiClickSound();
-      if (!supportsGyroSteering()) return;
-      if (!world.gyro.enabled && !world.gyro.permissionReady) {
-        const granted = await requestGyroPermission(true);
-        if (!granted) return;
-        return;
-      }
-      setGyroEnabled(!world.gyro.enabled);
     }
 
     // Mobile camera adjustment pulls the view back slightly so enemies are easier to see around the cannon.
@@ -1472,6 +1320,27 @@ The enemy is in full retreat.</p>
       return PHASES[Math.min(world.phaseIndex, PHASES.length - 1)];
     }
 
+    function currentTheater() {
+      return currentPhase().environment;
+    }
+
+    function isFinalPhase() {
+      return world.phaseIndex === PHASES.length - 1;
+    }
+
+    function enterPhase(index, now = performance.now()) {
+      world.phaseIndex = index;
+      world.weather = currentTheater().initialWeather;
+      world.nextWeatherAt = now + 30000;
+      world.pickups = [];
+      world.projectiles = [];
+      createFloorMarks();
+      createHazards();
+      // New terrain can surround the player's previous position.
+      constrainToObstacles(world.player.x, world.player.y);
+      showMessage(currentPhase().arenaName, now, 2400);
+    }
+
     function isOpeningGrace(now) {
       return now - world.roundStartAt < OPENING_GRACE_MS;
     }
@@ -1483,38 +1352,53 @@ The enemy is in full retreat.</p>
 
     function createFloorMarks() {
       world.floorMarks = [];
-      for (let i = 0; i < 200; i += 1) {
+      const terrain = currentTheater().terrain;
+      for (let i = 0; i < terrain.markCount; i += 1) {
         world.floorMarks.push({
           x: rand(-world.size, world.size),
           y: rand(-world.size, world.size),
           size: rand(8, 26),
           angle: rand(-0.7, 0.7),
-          kind: Math.random() < 0.3 ? "rock" : "line",
+          kind: Math.random() < terrain.rockFraction ? "rock" : "line",
         });
       }
     }
 
     function createHazards() {
-      // Terrain variation stays readable by using broad shapes instead of complex geometry.
-      world.hazards.ridges = [
-        { x: -620, y: 440, w: 760, h: 130, angle: 0.1, tint: "rgba(161, 115, 63, 0.65)" },
-        { x: 680, y: -360, w: 620, h: 120, angle: -0.18, tint: "rgba(154, 108, 56, 0.6)" },
-        { x: 160, y: 1020, w: 920, h: 150, angle: 0.06, tint: "rgba(171, 123, 70, 0.58)" }
-      ];
-      world.hazards.water = [
-        { x: -420, y: -480, r: 220 },
-        { x: 540, y: 620, r: 240 },
-        { x: 0, y: 920, r: 170 }
-      ];
-      world.hazards.riverbeds = [
-        { x: -180, y: 140, w: 980, h: 180, angle: -0.24 },
-        { x: 520, y: -760, w: 760, h: 150, angle: 0.18 }
-      ];
+      const terrain = currentTheater().terrain;
+      // Fresh copies prevent runtime state from changing shared definitions.
+      for (const kind of ["ridges", "water", "riverbeds", "obstacles"]) {
+        world.hazards[kind] = terrain[kind].map(zone => ({ ...zone }));
+      }
+    }
+
+    // Small rock/ruin footprints are movement barriers, not weapon cover.
+    // Sweep the path so a large frame cannot tunnel through an obstacle.
+    function constrainToObstacles(nextX, nextY) {
+      const player = world.player;
+      const steps = Math.max(1, Math.ceil(Math.hypot(nextX - player.x, nextY - player.y) / 20));
+      const dx = (nextX - player.x) / steps;
+      const dy = (nextY - player.y) / steps;
+      let x = player.x, y = player.y;
+      for (let step = 0; step < steps; step += 1) {
+        x += dx; y += dy;
+        for (const obstacle of world.hazards.obstacles) {
+          const ox = x - obstacle.x, oy = y - obstacle.y;
+          const distance = Math.hypot(ox, oy);
+          const radius = obstacle.r + 24;
+          if (distance < radius) {
+            const angle = distance > 0.001 ? Math.atan2(oy, ox) : player.angle + Math.PI;
+            x = obstacle.x + Math.cos(angle) * radius;
+            y = obstacle.y + Math.sin(angle) * radius;
+          }
+        }
+      }
+      player.x = clamp(x, -world.size, world.size);
+      player.y = clamp(y, -world.size, world.size);
     }
 
     function getHazardType() {
-      if (world.mode === "boss" && currentPhase().boss.final) return "water";
-      return currentPhase().hazard;
+      return currentTheater().hazard;
     }
 
     function getWaterSlowdown() {
@@ -1523,7 +1407,7 @@ The enemy is in full retreat.</p>
       for (const zone of world.hazards.water) {
         const dx = world.player.x - zone.x;
         const dy = world.player.y - zone.y;
-        if (Math.hypot(dx, dy) < zone.r) return 0.55;
+        if (Math.hypot(dx, dy) < zone.r) return currentTheater().modifiers.waterSlowdown;
       }
       return 1;
     }
@@ -1630,7 +1514,7 @@ The enemy is in full retreat.</p>
         turretColor: template.turret,
         cannonScale: template.cannonScale,
         boss: false,
-        hitFlash: 0,
+        hitFlash: now - 200,
         megaDamage: 999,
         explosionScale: template.explosionScale,
       });
@@ -1661,7 +1545,7 @@ The enemy is in full retreat.</p>
           turretColor: boss.turret,
           cannonScale: 1.42,
           boss: true,
-          hitFlash: 0,
+          hitFlash: now - 200,
           megaDamage: boss.megaDamage,
           explosionScale: 1.75,
         });
@@ -1726,6 +1610,7 @@ The enemy is in full retreat.</p>
       enemy.hp -= damage;
       enemy.hitFlash = now;
       if (enemy.hp <= 0) destroyEnemy(enemy, now);
+      else world.effects.push({ kind: "hit", x: enemy.x, y: enemy.y, bornAt: now, life: 220, radius: 24 });
     }
 
     function clearEndingTimers() {
@@ -2116,18 +2001,19 @@ The enemy is in full retreat.</p>
     }
 
     function completeBoss(now) {
-      if (currentPhase().boss.final) {
+      if (isFinalPhase()) {
         startBonusRound(now);
         return;
       }
       world.mode = "arena";
-      world.phaseIndex += 1;
-      showMessage(currentPhase().arenaName, now, 2400);
+      enterPhase(world.phaseIndex + 1, now);
     }
 
     function resetGame() {
       const now = performance.now();
       clearEndingTimers();
+      clearHeldInput();
+      motionControls.reset();
       world.player.x = 0;
       world.player.y = 0;
       world.player.angle = 0;
@@ -2140,13 +2026,15 @@ The enemy is in full retreat.</p>
       world.player.chargeStart = 0;
       world.player.chargeAmount = 0;
       world.player.recoil = 0;
+      world.player.lastFireAt = 0;
       world.player.invincibleUntil = 0;
       world.player.lastHitAt = now - HEALTH_REGEN_MS;
       world.player.lastRegenAt = now;
-      world.player.lastHealAt = 0;
+      world.player.lastHealAt = now - 2000;
       world.player.bob = 0;
 
       world.enemies = [];
+      world.pickups = [];
       world.projectiles = [];
       world.effects = [];
       world.score = 0;
@@ -2154,6 +2042,7 @@ The enemy is in full retreat.</p>
       world.gameOver = false;
       world.victory = false;
       world.paused = false;
+      world.pausedAt = 0;
       world.mode = "arena";
       world.phaseIndex = 0;
       world.weather = "clear";
@@ -2171,12 +2060,6 @@ The enemy is in full retreat.</p>
       world.bonusRound.active = false;
       world.bonusRound.endsAt = 0;
       world.activeBonus = null;
-      world.gyro.gamma = 0;
-      world.gyro.beta = 0;
-      world.gyro.neutralGamma = 0;
-      world.gyro.neutralBeta = 0;
-      world.gyro.steer = 0;
-      world.gyro.throttle = 0;
       world.finalName = "";
       world.ending.quote = "";
       world.ending.stage = "victory";
@@ -2186,8 +2069,7 @@ The enemy is in full retreat.</p>
       world.chess.status = "";
       world.chess.active = false;
 
-      if (world.floorMarks.length === 0) createFloorMarks();
-      createHazards();
+      enterPhase(0, now);
       for (let i = 0; i < 3; i += 1) spawnEnemy(now, "jeep");
 
       pauseOverlay.classList.remove("open");
@@ -2375,7 +2257,7 @@ The enemy is in full retreat.</p>
     }
 
     function firePlayer(now, isMega) {
-      if (world.gameOver || world.victory || world.player.reloading || world.player.ammo <= 0) return;
+      if (world.paused || world.gameOver || world.victory || world.player.reloading || world.player.ammo <= 0) return;
       const rocketBonus = world.activeBonus?.type === "rockets";
       const targetEnemy = getAimTarget(rocketBonus ? 1650 : 1300);
       const aimAngle = getViewAngle();
@@ -2385,6 +2267,7 @@ The enemy is in full retreat.</p>
 
       world.player.ammo -= 1;
       world.player.recoil = isMega ? 1.7 : 1;
+      world.player.lastFireAt = now;
       playFireSound();
       world.projectiles.push({
         kind: "playerShot",
@@ -2417,6 +2300,8 @@ The enemy is in full retreat.</p>
       const angleToPlayer = Math.atan2(dy, dx);
       const angleDiff = Math.abs(angleWrap(angleToPlayer - enemy.angle));
       if (distance < 980 && angleDiff < (enemy.boss ? 0.42 : 0.35)) {
+        enemy.recoil = 1;
+        enemy.lastShotAt = now;
         world.projectiles.push({
           kind: "enemyShot",
           x: enemy.x,
@@ -2431,18 +2316,43 @@ The enemy is in full retreat.</p>
     }
 
     function switchWeather(now) {
-      const choices = weatherModes.filter((mode) => mode !== world.weather);
+      const choices = currentTheater().weatherModes.filter((mode) => mode !== world.weather);
+      if (!choices.length) { world.nextWeatherAt = now + 30000; return; }
       world.weather = choices[(Math.random() * choices.length) | 0];
       world.nextWeatherAt = now + 30000;
+    }
+
+    function shiftGameTimers(elapsed) {
+      const shift = (object, fields) => {
+        for (const field of fields) if (Number.isFinite(object[field])) object[field] += elapsed;
+      };
+      shift(world, ["roundStartAt", "lastSpawnAt", "lastPickupSpawnAt", "lastEnemyShotAt", "nextWeatherAt", "lastRadarUpdate", "messageUntil"]);
+      shift(world.player, ["reloadUntil", "invincibleUntil", "lastHitAt", "lastRegenAt", "lastHealAt", "lastFireAt"]);
+      shift(world.bonusRound, ["endsAt"]);
+      if (world.activeBonus) shift(world.activeBonus, ["until"]);
+      for (const enemy of world.enemies) shift(enemy, ["fireAt", "stateUntil", "hitFlash", "lastShotAt"]);
+      for (const shot of world.projectiles) shift(shot, ["bornAt", "impactAt"]);
+      for (const effect of world.effects) shift(effect, ["bornAt"]);
+      for (const pickup of world.pickups) shift(pickup, ["bornAt"]);
     }
 
     function togglePause(forceOpen = null) {
       if (world.victory) return;
       const next = forceOpen === null ? !world.paused : forceOpen;
+      if (next === world.paused) return;
+      const now = performance.now();
+      if (next) {
+        clearHeldInput();
+        motionControls.reset();
+        world.pausedAt = now;
+      } else {
+        shiftGameTimers(now - world.pausedAt);
+        world.pausedAt = 0;
+      }
       world.paused = next;
       pauseOverlay.classList.toggle("open", next);
       pauseOverlay.setAttribute("aria-hidden", next ? "false" : "true");
-      lastTime = performance.now();
+      lastTime = now;
     }
 
     function updatePlayer(dt, now) {
@@ -2451,35 +2361,20 @@ The enemy is in full retreat.</p>
         world.player.reloading = false;
       }
 
-      let moveInput = 0;
-      let turnInput = 0;
-      if (isTouchDevice) {
-        moveInput = clamp(-touchState.moveY, -1, 1);
-        turnInput = clamp(touchState.moveX, -1, 1);
-      } else {
-        if (keys.KeyW || keys.ArrowUp) moveInput += 1;
-        if (keys.KeyS || keys.ArrowDown) moveInput -= 1;
-        if (keys.KeyA) turnInput -= 1;
-        if (keys.KeyD) turnInput += 1;
-      }
-
-      if (world.gyro.enabled) {
-        const steerTarget = getGyroAxisValue(world.gyro.gamma, world.gyro.neutralGamma, GYRO_DEAD_ZONE, GYRO_MAX_TILT);
-        // Forward tilt should drive forward, while tilting back should slow or reverse.
-        const throttleTarget = getGyroAxisValue(world.gyro.beta, world.gyro.neutralBeta, GYRO_MOVE_DEAD_ZONE, GYRO_MAX_PITCH);
-        world.gyro.steer += (steerTarget - world.gyro.steer) * Math.min(1, dt * 4.5);
-        world.gyro.throttle += (throttleTarget - world.gyro.throttle) * Math.min(1, dt * 3.8);
-        turnInput = clamp(world.gyro.steer + turnInput * 0.2, -1, 1);
-        moveInput = clamp(world.gyro.throttle + moveInput * 0.2, -1, 1);
-      } else {
-        world.gyro.steer += (0 - world.gyro.steer) * Math.min(1, dt * 5);
-        world.gyro.throttle += (0 - world.gyro.throttle) * Math.min(1, dt * 5);
-      }
+      // Keyboard and touch are independent. Direct input always retains full strength.
+      const keyboardMove = Number(!!(keys.KeyW || keys.ArrowUp)) - Number(!!(keys.KeyS || keys.ArrowDown));
+      const keyboardTurn = Number(!!keys.KeyD) - Number(!!keys.KeyA);
+      const moveKeysHeld = keys.KeyW || keys.KeyS || keys.ArrowUp || keys.ArrowDown;
+      const turnKeysHeld = keys.KeyA || keys.KeyD;
+      const motion = motionControls.read(dt);
+      const joystickHeld = touchState.joystickId !== null;
+      const moveInput = moveKeysHeld ? keyboardMove : joystickHeld ? clamp(-touchState.moveY, -1, 1) : motion.move;
+      const turnInput = turnKeysHeld ? keyboardTurn : joystickHeld ? clamp(touchState.moveX, -1, 1) : motion.turn;
 
       const turnSpeed = 1.22;
       world.player.angle += turnInput * turnSpeed * dt;
 
-      if (isTouchDevice) {
+      if (isTouchDevice && !keys.ArrowLeft && !keys.ArrowRight) {
         const autoTarget = getNearestVisibleEnemy();
         const targetTurret = autoTarget ? clamp(angleWrap(Math.atan2(autoTarget.y - world.player.y, autoTarget.x - world.player.x) - world.player.angle), -TURRET_LIMIT, TURRET_LIMIT) : 0;
         const diff = targetTurret - world.player.turretAngle;
@@ -2497,11 +2392,11 @@ The enemy is in full retreat.</p>
       world.player.turretAngle = clamp(world.player.turretAngle, -TURRET_LIMIT, TURRET_LIMIT);
 
       const waterSlow = getWaterSlowdown();
-      const moveSpeed = 182 * waterSlow;
-      world.player.x += Math.cos(world.player.angle) * moveInput * moveSpeed * dt;
-      world.player.y += Math.sin(world.player.angle) * moveInput * moveSpeed * dt;
-      world.player.x = clamp(world.player.x, -world.size, world.size);
-      world.player.y = clamp(world.player.y, -world.size, world.size);
+      const moveSpeed = 182 * waterSlow * currentTheater().modifiers.movement;
+      constrainToObstacles(
+        world.player.x + Math.cos(world.player.angle) * moveInput * moveSpeed * dt,
+        world.player.y + Math.sin(world.player.angle) * moveInput * moveSpeed * dt
+      );
       world.player.recoil = Math.max(0, world.player.recoil - dt * 3.0);
       world.player.bob += dt * (Math.abs(moveInput) > 0 ? 6 : 2);
 
@@ -2524,7 +2419,7 @@ The enemy is in full retreat.</p>
     function updateArenaSpawns(now) {
       const phase = currentPhase();
       const aliveRegular = world.enemies.filter((enemy) => enemy.alive && !enemy.boss).length;
-      const spawnDelay = world.phaseIndex >= 2 ? 2200 : 1950;
+      const spawnDelay = phase.spawnDelay;
       if (aliveRegular < phase.maxEnemies && now - world.lastSpawnAt > spawnDelay) {
         spawnEnemy(now);
         world.lastSpawnAt = now;
@@ -2549,7 +2444,7 @@ The enemy is in full retreat.</p>
 
     function updateBossSpawns(now) {
       const boss = currentPhase().boss;
-      if (!boss.final) return;
+      if (!boss.support) return;
       const supportAlive = world.enemies.filter((enemy) => enemy.alive && !enemy.boss).length;
       if (supportAlive < boss.supportMax && now - world.lastSpawnAt > 3400) {
         const type = chooseEnemyType(boss.support);
@@ -2561,6 +2456,8 @@ The enemy is in full retreat.</p>
     function updateEnemies(dt, now) {
       for (const enemy of world.enemies) {
         if (!enemy.alive) continue;
+        enemy.recoil = Math.max(0, (enemy.recoil || 0) - dt * 4);
+        enemy.moving = false;
         const dx = world.player.x - enemy.x;
         const dy = world.player.y - enemy.y;
         const distance = Math.hypot(dx, dy);
@@ -2570,6 +2467,8 @@ The enemy is in full retreat.</p>
         if (enemy.state === "advance") {
           const stopDistance = enemy.boss ? 390 : enemy.kind === "tank" ? 340 : 300;
           if (distance > stopDistance) {
+            enemy.moving = true;
+            enemy.travel = (enemy.travel || 0) + enemy.speed * dt;
             enemy.x += Math.cos(enemy.angle) * enemy.speed * dt;
             enemy.y += Math.sin(enemy.angle) * enemy.speed * dt;
           }
@@ -2606,7 +2505,8 @@ The enemy is in full retreat.</p>
     function updateProjectiles(dt, now) {
       const kept = [];
       for (const shot of world.projectiles) {
-        if (now - shot.bornAt > shot.life) continue;
+        // Resolve a pending impact even after a slow frame, before retiring its tracer.
+        if (now - shot.bornAt > shot.life && (shot.kind !== "playerShot" || shot.resolved)) continue;
         if (shot.kind === "enemyShot") {
           shot.x += shot.vx * dt;
           shot.y += shot.vy * dt;
@@ -2701,8 +2601,7 @@ The enemy is in full retreat.</p>
     }
 
     function drawSky() {
-      let top = "#89d6f7";
-      let bottom = "#f5d79a";
+      let [top, bottom] = currentTheater().palette.sky;
       if (world.bonusRound.active) {
         top = "#241253";
         bottom = "#35f1dd";
@@ -2728,7 +2627,7 @@ The enemy is in full retreat.</p>
         ctx.save();
         ctx.translate(p.x, p.y + 76 * p.scale);
         ctx.rotate(river.angle - getViewAngle() * 0.12);
-        ctx.fillStyle = "rgba(182, 150, 102, 0.34)";
+        ctx.fillStyle = currentTheater().palette.channel;
         ctx.beginPath();
         ctx.ellipse(0, 0, river.w * p.scale * 0.26, river.h * p.scale * 0.18, 0, 0, TAU);
         ctx.fill();
@@ -2779,9 +2678,10 @@ The enemy is in full retreat.</p>
         groundGradient.addColorStop(0.52, "#ff7f50");
         groundGradient.addColorStop(1, "#1ad6a8");
       } else {
-        groundGradient.addColorStop(0, world.weather === "sunset" ? "#c59258" : "#deb776");
-        groundGradient.addColorStop(0.52, world.weather === "sunset" ? "#b38149" : "#d0a25d");
-        groundGradient.addColorStop(1, world.weather === "sunset" ? "#94663a" : "#bb8743");
+        const ground = currentTheater().palette.ground;
+        groundGradient.addColorStop(0, world.weather === "sunset" ? "#c59258" : ground[0]);
+        groundGradient.addColorStop(0.52, world.weather === "sunset" ? "#b38149" : ground[1]);
+        groundGradient.addColorStop(1, world.weather === "sunset" ? "#94663a" : ground[2]);
       }
       ctx.fillStyle = groundGradient;
       ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
@@ -2793,13 +2693,23 @@ The enemy is in full retreat.</p>
         ctx.fill();
       }
 
-      ctx.fillStyle = world.bonusRound.active ? "#ff5eb1" : world.weather === "sunset" ? "#ad7543" : "#c9984d";
+      ctx.fillStyle = world.bonusRound.active ? "#ff5eb1" : world.weather === "sunset" ? "#ad7543" : currentTheater().palette.hills;
       for (let i = 0; i < 5; i += 1) {
         const width = canvas.width * (0.26 + i * 0.12);
         const x = i * canvas.width * 0.22 - 120;
         const y = horizon + 24 + (i % 2) * 18;
+        const parallax = Math.sin(getViewAngle() + i) * 16;
+        const backdrop = currentTheater().backdrop;
         ctx.beginPath();
-        ctx.ellipse(x + width * 0.5, y, width * 0.5, 52 + i * 8, 0, Math.PI, TAU);
+        if (backdrop === "mesa") {
+          ctx.moveTo(x + parallax, y);
+          ctx.lineTo(x + width * .22 + parallax, y - 74 - i * 5);
+          ctx.lineTo(x + width * .64 + parallax, y - 74 - i * 5);
+          ctx.lineTo(x + width + parallax, y);
+        } else {
+          const height = backdrop === "river" ? 24 + i * 3 : backdrop === "lowRidges" ? 36 + i * 4 : 52 + i * 8;
+          ctx.ellipse(x + width * 0.5 + parallax, y, width * 0.5, height, 0, Math.PI, TAU);
+        }
         ctx.fill();
       }
       ctx.strokeStyle = "rgba(255,255,255,0.16)";
@@ -2812,7 +2722,7 @@ The enemy is in full retreat.</p>
       drawHazards();
 
       // Terrain readability comes from broad color variation plus dry channels and scattered rocks.
-      const rockColor = world.bonusRound.active ? "#1e2357" : world.weather === "sunset" ? "#7f5632" : "#8f6a46";
+      const rockColor = world.bonusRound.active ? "#1e2357" : world.weather === "sunset" ? "#7f5632" : currentTheater().palette.rocks;
       for (const mark of world.floorMarks) {
         const p = projectToScreen(mark.x, mark.y);
         if (!p || p.distance < 140 || p.distance > 1450) continue;
@@ -2841,11 +2751,47 @@ The enemy is in full retreat.</p>
       }
     }
 
+    function drawObstacle(obstacle, p) {
+      const radius = obstacle.r * p.scale;
+      ctx.save();
+      ctx.translate(p.x, p.y + 60 * p.scale);
+      ctx.fillStyle = "rgba(44,39,25,.18)";
+      ctx.beginPath();
+      ctx.ellipse(radius * .12, radius * .06, radius * .65, radius * .15, 0, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = currentTheater().palette.rocks;
+      ctx.beginPath();
+      ctx.moveTo(-radius * .55, 0);
+      ctx.lineTo(-radius * .32, -radius * .48);
+      ctx.lineTo(radius * .24, -radius * .58);
+      ctx.lineTo(radius * .55, -radius * .22);
+      ctx.lineTo(radius * .6, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,241,205,.18)";
+      if (obstacle.style === "ruin") {
+        ctx.fillRect(-radius * .4, -radius * .62, radius * .25, radius * .6);
+        ctx.fillRect(radius * .12, -radius * .7, radius * .22, radius * .68);
+      } else {
+        ctx.beginPath();
+        ctx.moveTo(-radius * .32, -radius * .48);
+        ctx.lineTo(radius * .24, -radius * .58);
+        ctx.lineTo(0, -radius * .18);
+        ctx.closePath(); ctx.fill();
+      }
+      ctx.restore();
+    }
+
     function drawEnemies(now) {
-      const visible = world.enemies.map((enemy) => ({ enemy, p: projectToScreen(enemy.x, enemy.y) }))
+      const visible = [
+        ...world.enemies.map((enemy) => ({ enemy, p: projectToScreen(enemy.x, enemy.y) })),
+        ...world.hazards.obstacles.map((obstacle) => ({ obstacle, p: projectToScreen(obstacle.x, obstacle.y) })),
+      ]
         .filter((item) => item.p)
         .sort((a, b) => b.p.distance - a.p.distance);
-      for (const { enemy, p } of visible) {
+      for (const { enemy, obstacle, p } of visible) {
+        if (obstacle) { drawObstacle(obstacle, p); continue; }
+        if (!enemy.alive) continue;
         const bodyW = 90 * p.scale * (enemy.size || 1);
         const bodyH = 46 * p.scale * (enemy.size || 1);
         const turretW = 40 * p.scale * (enemy.size || 1);
@@ -2866,14 +2812,40 @@ The enemy is in full retreat.</p>
 
         ctx.save();
         ctx.translate(p.x, baseY);
+        ctx.fillStyle = "rgba(48,31,20,0.2)";
+        ctx.beginPath();
+        ctx.ellipse(4 * p.scale, 2 * p.scale, bodyW * 0.64, bodyH * 0.18, 0, 0, TAU);
+        ctx.fill();
+        const suspension = enemy.moving ? Math.sin((enemy.travel || 0) * 0.22) * p.scale * 0.8 : 0;
+        ctx.translate(0, suspension);
         ctx.fillStyle = enemy.state === "fire" ? "#ff835f" : hitFlash ? "#fff3ad" : dangerBlink ? "#ffd08a" : bodyColor;
         ctx.fillRect(-bodyW / 2, -bodyH, bodyW, bodyH);
+        ctx.fillStyle = "rgba(255,248,210,0.16)";
+        ctx.fillRect(-bodyW / 2, -bodyH, bodyW, bodyH * 0.14);
+        ctx.fillStyle = "rgba(41,25,14,0.12)";
+        ctx.fillRect(-bodyW / 2, -bodyH * 0.26, bodyW, bodyH * 0.26);
         ctx.fillStyle = enemy.turretColor;
         ctx.fillRect(-turretW / 2, -bodyH - turretH + 4 * p.scale, turretW, turretH);
-        ctx.fillRect(-barrelW / 2, -bodyH - barrelH, barrelW, barrelH);
+        ctx.fillRect(-barrelW / 2, -bodyH - barrelH + (enemy.recoil || 0) * 6 * p.scale, barrelW, barrelH);
         ctx.fillStyle = enemy.kind === "jeep" ? "#5a4128" : "#2f2418";
         ctx.fillRect(-bodyW * 0.56, -bodyH + 8 * p.scale, bodyW * (enemy.kind === "jeep" ? 0.12 : 0.18), bodyH * 0.78);
         ctx.fillRect(bodyW * (enemy.kind === "jeep" ? 0.44 : 0.38), -bodyH + 8 * p.scale, bodyW * (enemy.kind === "jeep" ? 0.12 : 0.18), bodyH * 0.78);
+        const treadOffset = ((enemy.travel || 0) * 0.1) % 1;
+        ctx.fillStyle = "rgba(255,235,186,0.2)";
+        for (let tread = 0; tread < 3; tread += 1) {
+          const y = -bodyH * 0.76 + ((tread + treadOffset) / 3) * bodyH * 0.6;
+          ctx.fillRect(-bodyW * 0.54, y, bodyW * 0.1, Math.max(1, 2 * p.scale));
+          ctx.fillRect(bodyW * 0.44, y, bodyW * 0.1, Math.max(1, 2 * p.scale));
+        }
+        ctx.fillStyle = hitFlash ? "#ffffff" : "#efd798";
+        ctx.fillRect(-bodyW * 0.3, -bodyH * 0.28, 4 * p.scale, 3 * p.scale);
+        ctx.fillRect(bodyW * 0.26, -bodyH * 0.28, 4 * p.scale, 3 * p.scale);
+        if (enemy.lastShotAt && now - enemy.lastShotAt < 90) {
+          ctx.fillStyle = "rgba(255,233,159,0.85)";
+          ctx.beginPath();
+          ctx.ellipse(0, -bodyH - barrelH, 7 * p.scale, 10 * p.scale, 0, 0, TAU);
+          ctx.fill();
+        }
         if (enemy.kind === "tank" || enemy.boss) {
           ctx.fillStyle = "rgba(255,255,255,0.08)";
           ctx.fillRect(-bodyW * 0.34, -bodyH + 6 * p.scale, bodyW * 0.68, bodyH * 0.16);
@@ -2981,6 +2953,7 @@ The enemy is in full retreat.</p>
       }
 
       for (const effect of world.effects) {
+        if (now - effect.bornAt > effect.life) continue;
         if (effect.kind === "fragment") {
           const age = (now - effect.bornAt) / effect.life;
           const arcLift = effect.vz * age - 28 * age * age;
@@ -3002,12 +2975,26 @@ The enemy is in full retreat.</p>
           ctx.beginPath();
           ctx.ellipse(p.x, p.y + 54 * p.scale, effect.radius * p.scale * (0.45 + age), effect.radius * p.scale * 0.18 * (0.6 + age), 0, 0, TAU);
           ctx.fill();
+        } else if (effect.kind === "hit") {
+          const p = projectToScreen(effect.x, effect.y);
+          if (!p) continue;
+          const age = clamp((now - effect.bornAt) / effect.life, 0, 1);
+          ctx.strokeStyle = `rgba(255,244,188,${1 - age})`;
+          ctx.lineWidth = Math.max(1, 3 * p.scale);
+          ctx.beginPath();
+          ctx.arc(p.x, p.y + 36 * p.scale, effect.radius * p.scale * (0.4 + age), 0, TAU);
+          ctx.stroke();
         } else if (effect.kind === "explosion") {
           const p = projectToScreen(effect.x, effect.y);
           if (!p) continue;
           const age = (now - effect.bornAt) / effect.life;
           const radius = effect.radius * (0.45 + age * 1.1);
           const alpha = 1 - age;
+          ctx.strokeStyle = `rgba(255,221,156,${alpha * 0.34})`;
+          ctx.lineWidth = Math.max(1, 3 * p.scale * alpha);
+          ctx.beginPath();
+          ctx.ellipse(p.x, p.y + 55 * p.scale, radius * p.scale * 1.5, radius * p.scale * 0.38, 0, 0, TAU);
+          ctx.stroke();
           ctx.fillStyle = `rgba(255,161,72,${alpha})`;
           ctx.beginPath();
           ctx.arc(p.x, p.y + 40 * p.scale, radius * p.scale, 0, TAU);
@@ -3033,7 +3020,11 @@ The enemy is in full retreat.</p>
       const turretShift = (world.player.turretAngle / TURRET_LIMIT) * 72;
       ctx.fillStyle = "#58665f";
       ctx.fillRect(centerX - 24, canvas.height - 126 + recoilOffset + bobOffset + camera.barrelLift, 48, 136);
-      ctx.fillStyle = "#7e9189";
+      const barrelShade = ctx.createLinearGradient(centerX - 10, 0, centerX + 10, 0);
+      barrelShade.addColorStop(0, "#647a70");
+      barrelShade.addColorStop(0.4, "#94a99d");
+      barrelShade.addColorStop(1, "#53685e");
+      ctx.fillStyle = barrelShade;
       ctx.fillRect(centerX - 10 + turretShift * 0.22, canvas.height - 338 + recoilOffset + bobOffset + camera.barrelYOffset, 20, 244);
       ctx.fillStyle = "#44514d";
       ctx.beginPath();
@@ -3049,7 +3040,14 @@ The enemy is in full retreat.</p>
       ctx.lineTo(centerX + 12, baseY);
       ctx.fill();
       ctx.fillStyle = "#96aaa1";
-      ctx.fillRect(centerX - 8 + turretShift, canvas.height - 350 + recoilOffset + bobOffset + camera.barrelYOffset, 16, 66);
+      ctx.fillRect(centerX - 8 + turretShift * 0.22, canvas.height - 350 + recoilOffset + bobOffset + camera.barrelYOffset, 16, 66);
+      if (world.player.lastFireAt && now - world.player.lastFireAt < 95) {
+        const alpha = 1 - (now - world.player.lastFireAt) / 95;
+        ctx.fillStyle = `rgba(255,229,152,${alpha * 0.85})`;
+        ctx.beginPath();
+        ctx.ellipse(centerX + turretShift * 0.22, canvas.height - 353 + recoilOffset + bobOffset + camera.barrelYOffset, 9 + 10 * alpha, 16 + 12 * alpha, 0, 0, TAU);
+        ctx.fill();
+      }
     }
 
     function drawCrosshair(now) {
@@ -3105,10 +3103,7 @@ The enemy is in full retreat.</p>
         ctx.fillStyle = amount >= 1 ? "#ffcf9b" : "#fff1cb";
         ctx.fillText(amount >= 1 ? "Mega Blast Ready" : "Charging", x, y + 86);
       }
-      if (isTouchDevice && world.gyro.enabled) {
-        ctx.fillStyle = "rgba(255,241,203,0.82)";
-        ctx.fillText("Gyro Steering On", x, y - 52);
-      }
+
     }
 
     function drawWeatherOverlay(now) {
@@ -3146,15 +3141,15 @@ The enemy is in full retreat.</p>
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
       if (getHazardType() === "fog") {
-        ctx.fillStyle = "rgba(220, 214, 202, 0.18)";
+        ctx.fillStyle = `rgba(220,214,202,${currentTheater().modifiers.fogOpacity})`;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
     }
 
     function drawMessage(now) {
       if (now >= world.messageUntil || !world.messageText) return;
-      const alpha = clamp((world.messageUntil - now) / 2200, 0, 1);
-      const width = 340;
+      const alpha = clamp((world.messageUntil - now) / 500, 0, 1);
+      const width = Math.min(340, canvas.width - 32);
       const height = 54;
       const x = canvas.width * 0.5 - width / 2;
       const y = canvas.height * 0.2;
@@ -3222,8 +3217,9 @@ The enemy is in full retreat.</p>
         }
       }
 
-      updateHud(now);
-      render(now);
+      const displayTime = world.paused ? world.pausedAt : now;
+      updateHud(displayTime);
+      render(displayTime);
       requestAnimationFrame(tick);
     }
 
@@ -3243,7 +3239,7 @@ The enemy is in full retreat.</p>
     }
 
     function releaseCharge(now = performance.now()) {
-      if (world.player.charging && !world.player.reloading && world.player.ammo > 0 && !world.gameOver && !world.victory) {
+      if (world.player.charging && !world.player.reloading && world.player.ammo > 0 && !world.paused && !world.gameOver && !world.victory) {
         firePlayer(now, world.player.chargeAmount >= 1);
       }
       world.player.charging = false;
@@ -3252,16 +3248,16 @@ The enemy is in full retreat.</p>
 
     function performReload(now = performance.now()) {
       startSoundtrack();
-      if (!world.player.reloading && world.player.ammo > 0 && world.player.ammo < MAGAZINE_SIZE && !world.gameOver && !world.victory) {
+      if (!world.player.reloading && world.player.ammo > 0 && world.player.ammo < MAGAZINE_SIZE && !world.paused && !world.gameOver && !world.victory) {
         startReload(now, NORMAL_RELOAD_MS);
         world.player.ammo = 0;
       }
     }
 
     function updateJoystick(clientX, clientY) {
-      const rect = joystickZone.getBoundingClientRect();
-      const cx = rect.left + rect.width * 0.45;
-      const cy = rect.top + rect.height * 0.72;
+      const base = document.getElementById("joystickBase").getBoundingClientRect();
+      const cx = base.left + base.width / 2;
+      const cy = base.top + base.height / 2;
       const dx = clientX - cx;
       const dy = clientY - cy;
       const len = Math.hypot(dx, dy) || 1;
@@ -3291,7 +3287,7 @@ The enemy is in full retreat.</p>
     }
 
     document.addEventListener("touchmove", (event) => {
-      if (event.target.closest("input, textarea")) return;
+      if (event.target.closest("input, textarea, #helpPanel, .overlay-card")) return;
       event.preventDefault();
     }, { passive: false });
     document.addEventListener("gesturestart", (event) => {
@@ -3301,28 +3297,18 @@ The enemy is in full retreat.</p>
       event.preventDefault();
     }, { passive: false });
     document.addEventListener("pointerdown", handleMobileRestart, { passive: false });
-    // Prevent double-tap zoom on the game surface and touch controls.
-    let lastTapAt = 0;
-    document.addEventListener("touchend", (event) => {
-      if (event.target.closest("input, textarea")) return;
-      if (!event.target.closest("#game, #mobileControls, .ui-button, #gyroToggle, #gyroCalibrate, #gyroPermissionButton, #pauseOverlay, #helpPanel, #endingOverlay")) return;
-      const now = performance.now();
-      if (now - lastTapAt < 320) {
-        event.preventDefault();
-      }
-      lastTapAt = now;
-    }, { passive: false });
-    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, gyroCalibrate, gyroPermissionButton, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
+    for (const target of [gameSurface, touchFire, touchReload, touchPause, pauseButton, helpButton, gyroToggle, gyroCalibrate, showQuoteButton, continueEpilogueButton, startChessButton, exitChessButton, playAgainButton]) {
       target.addEventListener("dblclick", (event) => {
         event.preventDefault();
       });
     }
 
     window.addEventListener("keydown", (event) => {
+      if (event.target.closest("input, textarea, select")) return;
       if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) {
         event.preventDefault();
       }
-      if (event.code === "KeyP") {
+      if (event.code === "KeyP" && !event.repeat) {
         startSoundtrack();
         togglePause();
         return;
@@ -3356,40 +3342,69 @@ The enemy is in full retreat.</p>
     helpButton.addEventListener("click", () => setHelpOpen(!helpPanel.classList.contains("open")));
     closeHelp.addEventListener("click", () => setHelpOpen(false));
     pauseButton.addEventListener("click", () => togglePause());
-    gyroToggle.addEventListener("click", () => {
-      toggleGyroSteering();
-    });
-    gyroCalibrate.addEventListener("click", () => {
-      startSoundtrack();
-      playUiClickSound();
-      calibrateGyroSteering();
-    });
-    gyroPermissionButton.addEventListener("click", async () => {
-      startSoundtrack();
-      playUiClickSound();
-      await requestGyroPermission(true);
-    });
+    gyroToggle.addEventListener("click", toggleGyroSteering);
+    gyroCalibrate.addEventListener("click", () => motionControls.recenter());
     resumeButton.addEventListener("click", () => togglePause(false));
     touchPause.addEventListener("click", () => togglePause());
 
     // Mobile controls keep aiming gentle by using a left joystick plus hold-to-fire on the right.
     touchReload.addEventListener("click", () => performReload(performance.now()));
-    touchFire.addEventListener("pointerdown", (event) => {
-      event.preventDefault();
-      beginCharge(performance.now());
-      touchState.firing = true;
-    });
-    const endTouchFire = (event) => {
-      if (event) event.preventDefault();
-      if (!touchState.firing) return;
+    function cancelCharge() {
       touchState.firing = false;
-      releaseCharge(performance.now());
-    };
-    touchFire.addEventListener("pointerup", endTouchFire);
-    touchFire.addEventListener("pointercancel", endTouchFire);
-    touchFire.addEventListener("pointerleave", endTouchFire);
+      touchState.fireId = null;
+      world.player.charging = false;
+      world.player.chargeAmount = 0;
+    }
+
+    function clearHeldInput() {
+      for (const code of Object.keys(keys)) keys[code] = false;
+      touchState.moveX = 0;
+      touchState.moveY = 0;
+      touchState.joystickId = null;
+      cancelCharge();
+      updateJoystickStick();
+    }
+
+    function attachFireControl(target, mouseOnly = false) {
+      target.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || (mouseOnly && event.pointerType !== "mouse") || touchState.fireId !== null) return;
+        event.preventDefault();
+        beginCharge(performance.now());
+        if (!world.player.charging) return;
+        touchState.firing = true;
+        touchState.fireId = event.pointerId;
+        target.setPointerCapture(event.pointerId);
+      });
+      target.addEventListener("pointerup", (event) => {
+        if (touchState.fireId !== event.pointerId) return;
+        event.preventDefault();
+        touchState.firing = false;
+        touchState.fireId = null;
+        releaseCharge(performance.now());
+      });
+      for (const name of ["pointercancel", "lostpointercapture"]) {
+        target.addEventListener(name, (event) => {
+          if (touchState.fireId === event.pointerId) cancelCharge();
+        });
+      }
+    }
+    attachFireControl(touchFire);
+    attachFireControl(gameSurface, true);
+    window.addEventListener("blur", () => {
+      clearHeldInput();
+      // A native permission prompt can temporarily take focus. Keep that
+      // pending gesture alive; hiding the document or resetting still cancels it.
+      if (motionControls.enabled) motionControls.reset();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        clearHeldInput();
+        if (!world.gameOver && !world.victory) togglePause(true);
+      }
+    });
 
     joystickZone.addEventListener("pointerdown", (event) => {
+      if (touchState.joystickId !== null || world.paused || world.gameOver || world.victory) return;
       event.preventDefault();
       touchState.joystickId = event.pointerId;
       joystickZone.setPointerCapture(event.pointerId);
@@ -3408,6 +3423,7 @@ The enemy is in full retreat.</p>
     };
     joystickZone.addEventListener("pointerup", endJoystick);
     joystickZone.addEventListener("pointercancel", endJoystick);
+    joystickZone.addEventListener("lostpointercapture", endJoystick);
 
     showQuoteButton.addEventListener("click", () => {
       startSoundtrack();
@@ -3442,8 +3458,6 @@ The enemy is in full retreat.</p>
 
     resize();
     updateGyroToggle();
-    createFloorMarks();
-    createHazards();
     resetGame();
     requestAnimationFrame(tick);
   </script>
